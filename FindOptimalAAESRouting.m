@@ -16,9 +16,9 @@ search_for_max_length = 100000;
 H = zeros(16, 16, search_for_max_length);
 H = FillIRMatrix(H, search_for_max_length, "H", "Simulated Physical RIRs/Room 1 Absorption 1/");
 
-FindRouting(H, fs, false)
+FindRouting(H, fs)
 
-function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs, return_first_max_only)
+function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs)
     num_chans = size(loudspeaker_to_mic_matrix_irs, 1);
     delays = zeros(num_chans);
     
@@ -53,23 +53,29 @@ function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs, return_fi
     end
 
     % Evaluate total delay of each row
-    permuted_delays = delays_sorted(all_permutations);
-    total_delays = sum(permuted_delays, 2);
-    max_total_row_delay = max(total_delays);
-
-    % Return one or all rows of permutations resulting in the max delay
-    if return_first_max_only
-        max_row = find(total_delays == max_total_row_delay, 1);
-    else
-        max_row = total_delays == max_total_row_delay;
+    permuted_delays = zeros(num_chans);
+    for row = 1:num_chans
+        for col = 1:num_chans
+            permuted_delays(row, col) = delays(all_permutations(row, col), col);
+        end
     end
+
+    % Find row that results in max delay
+    total_delays = sum(permuted_delays, 2);
+    [~, max_row] = max(total_delays);
+
+    % Return row permutations resulting in the max delay
+    permutations = all_permutations(max_row,:);
 
     disp("Min delay in dataset: " + (min(delays_sorted(num_chans,:)) / fs) * 1000 + " ms");
     disp("Max delay in dataset: " + (max(delays_sorted(1,:)) / fs) * 1000 + " ms");
-    disp("Min selected delay: " + (min(permuted_delays(1,:)) / fs) * 1000 + " ms");
-    disp("Max selected delay: " + (max(permuted_delays(1,:)) / fs) * 1000 + " ms");
-    disp("Total selected delay: " + (max_total_row_delay / fs) * 1000 + " ms");
-    permutations = all_permutations(max_row,:);
+    disp("Min selected delay: " + (min(permuted_delays(max_row,:)) / fs) * 1000 + " ms");
+    disp("Max selected delay: " + (max(permuted_delays(max_row,:)) / fs) * 1000 + " ms");
+    
+    % disp("Selected delays: ");
+    % for i = 1:num_chans
+    %     disp(delays(permutations(i), i) / fs * 1000 + " ms");
+    % end
 end
 
 function matrix_to_fill = FillIRMatrix(matrix_to_fill, desired_ir_length, filename_base_id, ir_directory)
