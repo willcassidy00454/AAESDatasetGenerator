@@ -4,3 +4,4 @@ Reverberators
 AAES Receiver RIRs
 AbsorbCoeffsTest/AbsorbCoeffsTest.asv
 FindOptimalAAESRouting.asv
+GenerateFDNIRs.asv
