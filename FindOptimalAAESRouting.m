@@ -1,7 +1,9 @@
-% This script finds the one-to-one mapping of an AAES routing matrix (from
-% microphones to loudspeakers) that exhibits the maximum overall system
-% delay. The aim of this is to find the AAES routing that should result
-% in the least risk in terms of colouration due to strong direct paths
+% This script attempts to find the 1-to-1 mapping of an AAES routing matrix
+% (from microphones to loudspeakers) that exhibits the maximum overall
+% system delay. The aim of this is to find the AAES routing that should
+% result in the least risk in terms of colouration due to strong direct
+% paths. This script doesn't brute force all possible combinations, but
+% rather starts from the max delays and finds a nearby 1-to-1 solution
 
 % ============== INPUTS ==============
 % loudspeaker_to_mic_matrix_irs = a square matrix of IRs characterising the
