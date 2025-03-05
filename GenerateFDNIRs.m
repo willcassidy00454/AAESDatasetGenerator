@@ -20,7 +20,7 @@ FDN.feedbackMatrix = randomOrthogonal(FDN.order);
 
 % Absoption filters
 FDN.RT_DC = 2.0;                % [seconds]
-FDN.RT_NY = 1.2;                % [seconds]
+FDN.RT_NY = 0.5;                % [seconds]
 
 % FDN.RT_DC = 0.868 * rt_ratio;                % [seconds]
 % FDN.RT_NY = FDN.RT_DC / 2;                % [seconds]
@@ -45,16 +45,26 @@ SaveIRs(irs, FDN.fs, 32, output_dir, "X");
 function params = create_FDN(params)
     % Reverberation time
     params.RT = max(params.RT_DC, params.RT_NY);
-
     % Input gains
     B = convert2zFilter(params.inputGains);
     params.InputGains = dfiltMatrix(B);
     % Delay lines
     params.DelayFilters = feedbackDelay(params.blockSize, params.delays);
+
+    % b_coeffs = ones(32,1,3);
+    % b_coeffs(:,:,1) = 0.05598657205955599;
+    % b_coeffs(:,:,2) = 0.11197314411911198;
+    % b_coeffs(:,:,3) = 0.05598657205955599;
+    % 
+    % a_coeffs = ones(32,1,3);
+    % a_coeffs(:,:,2) = -0.8597696961083905;
+    % a_coeffs(:,:,3) = 0.0837159843466146;
+
     % Absorption filters
     [absorption.b,absorption.a] = onePoleAbsorption(params.RT_DC, params.RT_NY, params.delays, params.fs);
     A = zTF(absorption.b, absorption.a,'isDiagonal', true);
-    params.absorptionFilters = dfiltMatrix(A); 
+    % A = zTF(b_coeffs, a_coeffs,'isDiagonal', true);
+    params.absorptionFilters = dfiltMatrix(A);
     % Feedback matrix
     F = convert2zFilter(params.feedbackMatrix);
     params.FeedbackMatrix = dfiltMatrix(F);
@@ -67,33 +77,6 @@ function params = create_FDN(params)
     params.DirectGains = dfiltMatrix(D);
 end
 
-% Process signal
-% function output = process(obj, input)
-% 
-%     % Input block
-%     assert(size(input,1) == obj.blockSize);
-%     % Microphone input
-%     source_to_mics = real(ifft( matrix_product( fft(obj.H_SM, obj.nfft, 1), fft(input, obj.nfft, 1) ), obj.nfft, 1));
-%     mics_signals = source_to_mics(1:obj.blockSize,:) + obj.mics_storage(1:obj.blockSize,:);
-%     % FDN
-%     FDN_input = mics_signals;
-%     FDN_output = obj.FDN_step(FDN_input);
-%     % Loudspeaker output
-%     lds_signals = obj.generalGain * FDN_output;
-%     % Feedback
-%     lds_to_mics = real(ifft( matrix_product( fft(obj.H_LM, obj.nfft, 1), fft(lds_signals, obj.nfft, 1) ), obj.nfft, 1));
-%     % Audience signal
-%     lds_to_audience = real(ifft( matrix_product( fft(obj.H_LA, obj.nfft, 1), fft(lds_signals, obj.nfft, 1) ), obj.nfft, 1));
-%     source_to_audience = real(ifft( matrix_product( fft(obj.H_SA, obj.nfft, 1), fft(input, obj.nfft, 1) ), obj.nfft, 1));
-%     audience_signal = lds_to_audience + source_to_audience;
-%     % Output block
-%     output = audience_signal(1:obj.blockSize) + obj.audience_storage(1:obj.blockSize);
-%     % Store for next block iterations
-%     obj.update_storage("mics_storage", source_to_mics+lds_to_mics);
-%     obj.update_storage("audience_storage", audience_signal);
-% 
-% end
-% 
 % FDN iteration step
 function [output, params] = FDN_step(params, input)
 
