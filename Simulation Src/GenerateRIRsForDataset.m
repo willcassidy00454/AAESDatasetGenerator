@@ -20,12 +20,12 @@ bit_depth = 32;
 num_room_dims = 2;
 num_absorptions = 2;
 
-room_dims_dir = "Perceptual Model Simulations/Room Dimensions/";
-absorptions_dir = "Perceptual Model Simulations/Absorption Coefficients/";
-coords_dir = "Perceptual Model Simulations/Transducer Coordinates/";
-rotations_dir = "Perceptual Model Simulations/Transducer Rotations/";
-directivities_dir = "Perceptual Model Simulations/Transducer Directivities/";
-output_dir = "Perceptual Model Simulations/Simulated Physical RIRs/";
+room_dims_dir = "Simulation Parameters/Room Dimensions/";
+absorptions_dir = "Simulation Parameters/Absorption Coefficients/";
+coords_dir = "Simulation Parameters/Transducer Coordinates/";
+rotations_dir = "Simulation Parameters/Transducer Rotations/";
+directivities_dir = "Simulation Parameters/Transducer Directivities/";
+output_dir = "Audio Data/Physical RIRs/";
 
 % Generate every combination in "parameters":
 for room_dims_index = 1:num_room_dims

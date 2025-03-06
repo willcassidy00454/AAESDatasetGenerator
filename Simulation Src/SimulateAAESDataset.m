@@ -1,9 +1,9 @@
 
-rir_base_dir = "Perceptual Model Simulations/Simulated Physical RIRs/";
-reverberator_base_dir = "Perceptual Model Simulations/Reverberators/";
-output_base_dir = "Perceptual Model Simulations/AAES Receiver RIRs/";
+rir_base_dir = "Audio Data/Physical RIRs/";
+reverberator_base_dir = "Audio Data/Reverberators/";
+output_base_dir = "Audio Data/AAES Receiver RIRs/";
 
-loop_gains = readmatrix("Perceptual Model Simulations/LoopGains.dat");
+loop_gains = readmatrix("Simulation Parameters/Loop Gains/LoopGains.dat");
 
 bit_depth = 32;
 

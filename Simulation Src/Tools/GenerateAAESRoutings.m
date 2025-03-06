@@ -1,4 +1,4 @@
-output_dir = "Routings/";
+output_dir = "Simulation Parameters/Routings/";
 mkdir(output_dir);
 
 % % 16x16 identity

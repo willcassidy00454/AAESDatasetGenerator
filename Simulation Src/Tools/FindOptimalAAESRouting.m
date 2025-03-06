@@ -16,10 +16,10 @@
 fs = 48000;
 search_for_max_length = 10000;
 H = zeros(16, 16, search_for_max_length);
-H = FillIRMatrix(H, search_for_max_length, "H", "Simulated Physical RIRs/Room 1 Absorption 1/");
+H = FillIRMatrix(H, search_for_max_length, "H", "Audio Data/Physical RIRs/Room 1 Absorption 1/");
 
 permutation = FindRouting(H, fs);
-writematrix(permutation, "Permutations/room_1.dat");
+writematrix(permutation, "Simulation Parameters/Permutations/room_1.dat");
 
 function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs)
     num_chans = size(loudspeaker_to_mic_matrix_irs, 1);

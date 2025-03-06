@@ -2,7 +2,7 @@
 num_room_dims = 3;
 num_absorptions = 3;
 num_filter_modes = 3;
-rir_dir = "Simulated Physical RIRs/";
+rir_dir = "Audio Data/Physical RIRs/";
 reverberator_base_dir = "Reverberators/";
 bit_depth = 32;
 rt_ratios = [0, 1, 3];
