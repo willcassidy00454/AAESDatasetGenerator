@@ -1,45 +1,50 @@
 
-% clear all
-
-config.numMicrophones = 4;
-config.numLoudspeakers = 4;
-
-% FDN order
-FDN.order = 32;
-
-% Gains
-FDN.inputGains = orth(randn(FDN.order, config.numMicrophones));
-FDN.outputGains = orth(randn(config.numLoudspeakers, FDN.order)')';
-FDN.directGains = zeros(config.numLoudspeakers,config.numMicrophones);
-
-% Delay lines
-FDN.delays = randi([1200,2500], [1,FDN.order]);
-
-% Feedback matrix
-FDN.feedbackMatrix = randomOrthogonal(FDN.order);
-
-% Absoption filters
-FDN.RT_DC = 2.0;                % [seconds]
-FDN.RT_NY = 0.5;                % [seconds]
-
-% FDN.RT_DC = 0.868 * rt_ratio;                % [seconds]
-% FDN.RT_NY = FDN.RT_DC / 2;                % [seconds]
-
-% Time Variation
-FDN.modulationFrequency = 0.0;  % hz
-FDN.modulationAmplitude = 0.0;
-FDN.spread = 0.0;
-
-FDN.blockSize = 256;
-FDN.fs = 48000;
-
-FDN = create_FDN(FDN);
-irs = computeFDNirs(FDN, config);
-irs = irs / max(abs(irs),[],"all");
-
-output_dir = "Reverberators/Reverberator 1/";
-mkdir(output_dir);
-SaveIRs(irs, FDN.fs, 32, output_dir, "X");
+function GenerateFDNIRs(rt_dc, rt_nyquist, num_mics, num_ls, fs, bit_depth, output_dir)
+    config.numMicrophones = num_mics;
+    config.numLoudspeakers = num_ls;
+    
+    % FDN order
+    FDN.order = 32;
+    
+    % Gains
+    FDN.inputGains = orth(randn(FDN.order, config.numMicrophones));
+    FDN.outputGains = orth(randn(config.numLoudspeakers, FDN.order)')';
+    FDN.directGains = zeros(config.numLoudspeakers,config.numMicrophones);
+    
+    % Delay lines
+    FDN.delays = randi([1200,2500], [1,FDN.order]);
+    
+    % Feedback matrix
+    FDN.feedbackMatrix = randomOrthogonal(FDN.order);
+    
+    % Absoption filters
+    FDN.RT_DC = rt_dc;                % [seconds]
+    FDN.RT_NY = rt_nyquist;                % [seconds]
+    
+    % FDN.RT_DC = 0.868 * rt_ratio;                % [seconds]
+    % FDN.RT_NY = FDN.RT_DC / 2;                % [seconds]
+    
+    % Time Variation
+    FDN.modulationFrequency = 0.0;  % hz
+    FDN.modulationAmplitude = 0.0;
+    FDN.spread = 0.0;
+    
+    FDN.blockSize = 256;
+    FDN.fs = fs;
+    
+    FDN = create_FDN(FDN);
+    irs = computeFDNirs(FDN, config);
+    
+    % Normalise each element individually
+    for row = 1:config.numMicrophones
+        for col = 1:config.numLoudspeakers
+            irs(row, col, :) = irs(row, col, :) / max(abs(irs(row, col, :)));
+        end
+    end
+    
+    mkdir(output_dir);
+    SaveIRs(irs, FDN.fs, bit_depth, output_dir, "X");
+end
 
 % Generate FDN
 function params = create_FDN(params)
@@ -102,7 +107,7 @@ end
 function FDN_irs = computeFDNirs(params, config)
 
     % Define length of the FDN irs based on the FDN RT
-    sigLength = params.RT * params.fs;
+    sigLength = ceil(params.RT * params.fs);
     
     % Allocate memory
     FDN_irs = zeros(config.numMicrophones, config.numLoudspeakers, sigLength);
