@@ -1,7 +1,5 @@
-.DS_Store
+*.DS_Store
 Simulated Physical RIRs
 Reverberators
 AAES Receiver RIRs
-AbsorbCoeffsTest/AbsorbCoeffsTest.asv
-FindOptimalAAESRouting.asv
-GenerateFDNIRs.asv
+*.asv
