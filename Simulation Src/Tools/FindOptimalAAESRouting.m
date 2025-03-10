@@ -39,8 +39,18 @@ function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs)
         end
     end
 
-    % Sort columns into longest (1, :) to shortest (end, :)
-    [delays_sorted, sorted_row_positions] = sort(delays,"descend");
+    % Sort rows into longest (1, :) to shortest (end, :)
+    [delays_sorted_rows, sorted_row_positions] = sort(delays,"descend");
+
+    PlotHeatmapForRouting(delays, false);
+    PlotHeatmapForRouting(delays_sorted_rows, false);
+
+    % Sort columns from highest variance to lowest variance
+    % column_variances = var(delays,[],2);
+    % [~, column_variance_permutations] = sort(column_variances, "descend");
+    % delays_sorted_rows_cols = delays_sorted_rows(:,column_variance_permutations);
+    % 
+    % PlotHeatmapForRouting(delays_sorted_rows_cols, false);
 
     % Check indices of first row (if all are different, this is optimal)
     % Iterate through each col of the first row, checking if the index
@@ -76,8 +86,8 @@ function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs)
     % Return row permutations resulting in the max delay
     permutations = all_permutations(max_row,:);
 
-    disp("Min delay in dataset: " + (min(delays_sorted(num_chans,:)) / fs) * 1000 + " ms");
-    disp("Max delay in dataset: " + (max(delays_sorted(1,:)) / fs) * 1000 + " ms");
+    disp("Min delay in dataset: " + (min(delays_sorted_rows(num_chans,:)) / fs) * 1000 + " ms");
+    disp("Max delay in dataset: " + (max(delays_sorted_rows(1,:)) / fs) * 1000 + " ms");
     disp("Min selected delay: " + (min(permuted_delays(max_row,:)) / fs) * 1000 + " ms");
     disp("Max selected delay: " + (max(permuted_delays(max_row,:)) / fs) * 1000 + " ms");
     
@@ -104,4 +114,39 @@ function matrix_to_fill = FillIRMatrix(matrix_to_fill, desired_ir_length, filena
             matrix_to_fill(row, col, :) = padded_ir;
         end
     end
+end
+
+function PlotHeatmapForRouting(routing, convert_to_dB)
+    nexttile
+
+    % for row = 1:num_rows
+    %     for col = 1:num_cols
+    %         [routing(row, col), ~] = audioread(routing_dir + "X_R"+row+"_S"+col+".wav");
+    %     end
+    % end
+
+    if (convert_to_dB)
+        if ~isempty(find(routing == 0))
+            routing(find(routing == 0)) = 0.001;
+        end
+
+        routing = 20 * log10(abs(routing));
+    end
+
+    heatmap(routing, "Colormap", parula, "CellLabelColor", "none");
+
+    if (convert_to_dB)
+        title("Routing Matrix Magnitude / dB");
+    else
+        title("Routing Matrix Gain");
+    end
+
+    xlabel("Microphones");
+    ylabel("Loudspeakers");
+
+    % if (convert_to_dB)
+    %     clim([-60 0]);
+    % else
+    %     clim([-1 1]);
+    % end
 end
