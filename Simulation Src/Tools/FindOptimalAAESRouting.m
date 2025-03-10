@@ -33,9 +33,8 @@ function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs)
     
     % Find all zero-to-max(abs) delays in samples
     for row = 1:num_chans
-        for col = 1:num_chans
-            b = abs(loudspeaker_to_mic_matrix_irs(row, col, :));
-            [~, delays(row, col)] = max(abs(loudspeaker_to_mic_matrix_irs(row, col, :)));
+        for permuted_col = 1:num_chans
+            [~, delays(row, permuted_col)] = max(abs(loudspeaker_to_mic_matrix_irs(row, permuted_col, :)));
         end
     end
 
@@ -46,55 +45,41 @@ function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs)
     PlotHeatmapForRouting(delays_sorted_rows, false);
 
     % Sort columns from highest variance to lowest variance
-    % column_variances = var(delays,[],2);
-    % [~, column_variance_permutations] = sort(column_variances, "descend");
-    % delays_sorted_rows_cols = delays_sorted_rows(:,column_variance_permutations);
-    % 
-    % PlotHeatmapForRouting(delays_sorted_rows_cols, false);
+    column_variances = var(delays,[],2);
+    [~, column_variance_permutations] = sort(column_variances, "descend");
+    delays_sorted_rows_cols = delays_sorted_rows(:,column_variance_permutations);
+    % sorted_row_and_col_positions = sorted_row_positions(:,column_variance_permutations);
+
+    PlotHeatmapForRouting(delays_sorted_rows_cols, false);
 
     % Check indices of first row (if all are different, this is optimal)
     % Iterate through each col of the first row, checking if the index
     % matches any elements of the output routing, which is written to after
     % each col iteration. If if matches, a duplicate is found, so increment
     % the row and check again. make sure this is reset for the next column.
-    all_permutations = zeros(num_chans);
+    permutations = zeros(num_chans, 1);
 
-    for start = 0:num_chans-1
-        for col = mod(start:num_chans-1 + start, num_chans) + 1
-            row = 1;
-    
-            while (any(sorted_row_positions(row, col) == all_permutations(start+1, :)))
-                row = row + 1;
-            end
-    
-            all_permutations(start+1, col) = sorted_row_positions(row, col);
+    for col = 1:num_chans
+        permuted_col = column_variance_permutations(col);
+        row = 1;
+
+        while (any(sorted_row_positions(row, permuted_col) == permutations))
+            row = row + 1;
         end
+
+        permutations(col) = sorted_row_positions(row, permuted_col);
     end
 
     % Evaluate total delay of each row
-    permuted_delays = zeros(num_chans);
-    for row = 1:num_chans
-        for col = 1:num_chans
-            permuted_delays(row, col) = delays(all_permutations(row, col), col);
-        end
+    permuted_delays = zeros(num_chans, 1);
+    for diagonal_index = 1:num_chans
+        permuted_delays(diagonal_index) = delays(permutations(diagonal_index), column_variance_permutations(diagonal_index));
     end
 
-    % Find row that results in max delay
-    total_delays = sum(permuted_delays, 2);
-    [~, max_row] = max(total_delays);
-
-    % Return row permutations resulting in the max delay
-    permutations = all_permutations(max_row,:);
-
-    disp("Min delay in dataset: " + (min(delays_sorted_rows(num_chans,:)) / fs) * 1000 + " ms");
-    disp("Max delay in dataset: " + (max(delays_sorted_rows(1,:)) / fs) * 1000 + " ms");
-    disp("Min selected delay: " + (min(permuted_delays(max_row,:)) / fs) * 1000 + " ms");
-    disp("Max selected delay: " + (max(permuted_delays(max_row,:)) / fs) * 1000 + " ms");
-    
-    % disp("Selected delays: ");
-    % for i = 1:num_chans
-    %     disp(delays(permutations(i), i) / fs * 1000 + " ms");
-    % end
+    disp("Min delay in dataset: " + (min(delays,[],"all") / fs) * 1000 + " ms");
+    disp("Max delay in dataset: " + (max(delays,[],"all") / fs) * 1000 + " ms");
+    disp("Min selected delay: " + (min(permuted_delays) / fs) * 1000 + " ms");
+    disp("Max selected delay: " + (max(permuted_delays) / fs) * 1000 + " ms");
 end
 
 function matrix_to_fill = FillIRMatrix(matrix_to_fill, desired_ir_length, filename_base_id, ir_directory)
@@ -119,12 +104,6 @@ end
 function PlotHeatmapForRouting(routing, convert_to_dB)
     nexttile
 
-    % for row = 1:num_rows
-    %     for col = 1:num_cols
-    %         [routing(row, col), ~] = audioread(routing_dir + "X_R"+row+"_S"+col+".wav");
-    %     end
-    % end
-
     if (convert_to_dB)
         if ~isempty(find(routing == 0))
             routing(find(routing == 0)) = 0.001;
@@ -143,10 +122,4 @@ function PlotHeatmapForRouting(routing, convert_to_dB)
 
     xlabel("Microphones");
     ylabel("Loudspeakers");
-
-    % if (convert_to_dB)
-    %     clim([-60 0]);
-    % else
-    %     clim([-1 1]);
-    % end
 end
