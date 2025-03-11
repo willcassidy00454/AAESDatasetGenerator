@@ -59,7 +59,8 @@ function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs)
     % the row and check again. make sure this is reset for the next column.
     permutations = zeros(num_chans, 1);
 
-    for col = 1:num_chans
+    % start = 5;
+    % for col = mod(start:num_chans-1 + start, num_chans) + 1
         permuted_col = column_variance_permutations(col);
         row = 1;
 
@@ -68,7 +69,7 @@ function permutations = FindRouting(loudspeaker_to_mic_matrix_irs, fs)
         end
 
         permutations(col) = sorted_row_positions(row, permuted_col);
-    end
+    % end
 
     % Evaluate total delay of each row
     permuted_delays = zeros(num_chans, 1);
