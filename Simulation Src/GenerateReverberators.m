@@ -1,5 +1,5 @@
 
-num_room_dims = 3;
+num_room_dims = 2;
 num_absorptions = 3;
 num_filter_modes = 3;
 rir_dir = "Audio Data/Physical RIRs/";
@@ -44,7 +44,7 @@ function GenerateReverberator(passive_rt, filter_mode_index, rt_ratio, fs, bit_d
 
         GenerateFDNIRs(rt_dc, rt_nyquist, 16, 16, fs, bit_depth, reverberator_dir);
     else
-        % write all ones reverberator
+        % Write all ones reverberator
         for row = 1:16
             for col = 1:16
                 audiowrite(reverberator_dir + "X_R"+row+"_S"+col+".wav", 1, fs, "BitsPerSample", bit_depth);

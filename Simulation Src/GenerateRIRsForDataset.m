@@ -18,7 +18,7 @@ bit_depth = 32;
 
 % This will read room_dimensions_1.dat to room_dimensions_[num_room_dims].dat
 num_room_dims = 2;
-num_absorptions = 2;
+num_absorptions = 3;
 
 room_dims_dir = "Simulation Parameters/Room Dimensions/";
 absorptions_dir = "Simulation Parameters/Absorption Coefficients/";
@@ -27,7 +27,7 @@ rotations_dir = "Simulation Parameters/Transducer Rotations/";
 directivities_dir = "Simulation Parameters/Transducer Directivities/";
 output_dir = "Audio Data/Physical RIRs/";
 
-% Generate every combination in "parameters":
+% Generate RIRs for room dims * absorptions
 for room_dims_index = 1:num_room_dims
     for absorptions_index = 1:num_absorptions
         GenerateRIRs(room_dims_index, ...
@@ -47,8 +47,8 @@ function GenerateRIRs(room_dims_index, absorptions_index, room_dims_dir, absorpt
     room_dims = readmatrix(room_dims_dir + "room_dimensions_"+room_dims_index+".dat");
     alphas = readmatrix(absorptions_dir + "absorption_coeffs_"+absorptions_index+".dat");
     
-    src_coords = readmatrix(coords_dir + "src_coords.dat");
-    rec_coords = readmatrix(coords_dir + "rec_coords.dat");
+    src_coords = readmatrix(coords_dir + "src_coords_"+room_dims_index+".dat");
+    rec_coords = readmatrix(coords_dir + "rec_coords_"+room_dims_index+".dat");
     ls_coords = readmatrix(coords_dir + "ls_coords_"+room_dims_index+".dat");
     mic_coords = readmatrix(coords_dir + "mic_coords_"+room_dims_index+".dat");
     
