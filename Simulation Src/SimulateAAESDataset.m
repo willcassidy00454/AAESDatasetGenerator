@@ -5,7 +5,7 @@ output_base_dir = "Audio Data/AAES Receiver RIRs/";
 permutations_base_dir = "Simulation Parameters/Permutations/";
 routings_base_dir = "Simulation Parameters/Routings/";
 
-loop_gains = readmatrix("Simulation Parameters/Loop Gains/LoopGains.dat");
+loop_gains = readmatrix("Simulation Parameters/Loop Gains/loop_gains.dat");
 
 bit_depth = 32;
 
@@ -14,10 +14,10 @@ num_ls = 16;
 
 % Parameters to combine
 num_loop_gains = length(loop_gains);
-num_rooms = 3;
+num_rooms = 2; % 3
 num_absorptions = 3;
 num_rt_ratios = 3;
-num_filters = 3;
+num_filters = 1; % 3
 num_routings = 4;
 
 % Make matrix of combinations where each row defines each simulation
@@ -48,7 +48,7 @@ for loop_gain_index = 1:num_loop_gains
 end
 
 % Simulate each row in the conditions matrix
-for row = 1:size(conditions, 1)
+parfor row = 1:size(conditions, 1)
     room_index = conditions(row, 1);
     absorption_index = conditions(row, 2);
     rt_ratio_index = conditions(row, 3);
@@ -60,7 +60,7 @@ for row = 1:size(conditions, 1)
 
     GenerateAAESIRs(rir_base_dir + "Room "+room_index+" Absorption "+absorption_index+"/", ...
         reverberator_base_dir + "Reverberator Room "+room_index+" Absorption "+absorption_index+" RT "+rt_ratio_index+" Filter "+filter_index+"/", ...
-        output_base_dir + "AAES Room "+room_index+" Absorption "+absorption_index+" Reverberator "+rt_ratio_index+" Loop Gain "+loop_gain+"/", ...
+        output_base_dir + "AAES Room "+room_index+" Absorption "+absorption_index+" RT "+rt_ratio_index+" Loop Gain "+loop_gain+" Filter "+filter_index+" Routing "+routing+"/", ...
         loop_gain, ...
         num_ls, ...
         num_mics, ...

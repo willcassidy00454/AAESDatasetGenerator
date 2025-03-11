@@ -17,7 +17,7 @@ sample_rate = 48000;
 bit_depth = 32;
 
 % This will read room_dimensions_1.dat to room_dimensions_[num_room_dims].dat
-num_room_dims = 2;
+num_room_dims = 2; % 3
 num_absorptions = 3;
 
 room_dims_dir = "Simulation Parameters/Room Dimensions/";
