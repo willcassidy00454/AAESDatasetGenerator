@@ -8,12 +8,10 @@ function PlotTransducers(coords_dir, rotations_dir, room_index)
     ls_rotations = readmatrix(rotations_dir + "ls_rotations_" + room_index + ".dat");
 
     grid on
-    nexttile
+    hold on
     PlotPoints(mic_coords, mic_rotations, true);
-    title("Room " + room_index + " Mics", "FontSize", 16);
-    nexttile
     PlotPoints(ls_coords, ls_rotations, false);
-    title("Room " + room_index + " LS", "FontSize", 16);
+    title("Room " + room_index, "FontSize", 16);
 end
 
 function PlotPoints(coords, rotations, is_mic)
