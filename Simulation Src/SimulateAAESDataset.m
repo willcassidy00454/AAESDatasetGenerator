@@ -13,12 +13,12 @@ num_mics = 16;
 num_ls = 16;
 
 % Parameters to combine
-num_loop_gains = 1; %length(loop_gains);
-num_rooms = 1; % 3
-num_absorptions = 1; % 3
-num_rt_ratios = 1; % 4
-num_filters = 1; % 3
-num_routings = 1; % 4
+num_loop_gains = length(loop_gains);
+num_rooms = 3;
+num_absorptions = 3;
+num_rt_ratios = 3;
+num_filters = 3;
+num_routings = 4;
 
 % Make matrix of combinations where each row defines each simulation
 % Columns: room index, absorptions index, reverberator index, loop gain (dB
