@@ -11,8 +11,8 @@ bit_depth = 32;
 loop_gains = readmatrix("Simulation Parameters/Loop Gains/loop_gains.dat");
 
 num_loop_gains = length(loop_gains);
-num_rooms = 3;
-num_absorptions = 3;
+num_rooms = 1;%3;
+num_absorptions = 1;%3;
 num_rt_ratios = 3;
 num_filters = 3;
 num_routings = 4;
@@ -73,9 +73,7 @@ for row = 1:size(conditions, 1)
 
         [programme_item, fs_programme_item] = audioread(programme_items_dir + "programme_item_" + programme_item_index + ".wav");
 
-        % assert(fs_programme_item == fs);
-
-        programme_item = programme_item(1:2*fs);
+        assert(fs_programme_item == fs);
 
         if fs_programme_item ~= fs
             programme_item = resample(programme_item,fs_programme_item,fs);

@@ -14,8 +14,8 @@ num_ls = 16;
 
 % Parameters to combine
 num_loop_gains = length(loop_gains);
-num_rooms = 3;
-num_absorptions = 3;
+num_rooms = 1;%3;
+num_absorptions = 1;%3;
 num_rt_ratios = 3;
 num_filters = 3;
 num_routings = 4;
@@ -48,7 +48,7 @@ for loop_gain_index = 1:num_loop_gains
 end
 
 % Simulate each row in the conditions matrix
-for row = 1:size(conditions, 1)
+parfor row = 1:size(conditions, 1)
     room_index = conditions(row, 1);
     absorption_index = conditions(row, 2);
     rt_ratio_index = conditions(row, 3);
