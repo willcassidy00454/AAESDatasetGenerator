@@ -16,9 +16,9 @@ function FilterReverberator(read_dir, write_dir, num_rows, num_cols, filter_type
         b = [0.002294837753273866 0.004589675506547732 0.002294837753273866];
         a = [1 -1.6664642575322546 0.6756436085453501];
     elseif filter_type == "High Shelf"
-        % f_c = 5 kHz, Q = 0.7071, +3 dB, 2nd order
-        b = [1.3153220258055074 -1.6264232110557726 0.600024686553278];
-        a = [1 -1.109228792618427 0.39815229392143964];
+        % f_c = 1 kHz, Q = 0.3, +6 dB, 2nd order
+        b = [1.942126127114147 -3.6298767977070048 1.7034151772350468];
+        a = [1 -1.8153410827045682 0.8310055893467576];
     else
         error("Filter type not recognised. Use 'LPF' or 'High Shelf'.");
     end
