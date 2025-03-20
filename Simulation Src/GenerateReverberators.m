@@ -1,5 +1,5 @@
 
-num_room_dims = 3
+num_room_dims = 3;
 num_absorptions = 3;
 num_filter_modes = 3;
 rir_dir = "Audio Data/Physical RIRs/";
@@ -68,8 +68,11 @@ function GenerateReverberator(passive_rt, filter_mode_index, rt_ratio, fs, bit_d
         end
     end
 
-    % Low pass output
     if filter_mode_index == 1
-        FilterReverberator(reverberator_dir, reverberator_dir, 16, 16, true);
+        % Low pass white FDN
+        FilterReverberator(reverberator_dir, reverberator_dir, 16, 16, "LPF", true);
+    elseif filter_mode_index == 3
+        % Apply high shelf to white FDN for extra HF
+        FilterReverberator(reverberator_dir, reverberator_dir, 16, 16, "High Shelf", true);
     end
 end

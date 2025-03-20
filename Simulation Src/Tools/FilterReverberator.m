@@ -1,12 +1,28 @@
 % Applies biquad to all elements of a reverberator folder
-function FilterReverberator(read_dir, write_dir, num_rows, num_cols, should_normalise_individual)
+function FilterReverberator(read_dir, write_dir, num_rows, num_cols, filter_type, should_normalise_individual)
+    if ~exist("filter_type", "var")
+        filter_type = "LPF";
+    end  
+
     if ~exist("should_normalise_individual", "var")
         should_normalise_individual = false;
     end
 
-    % f_c = 5 kHz, Q = 0.27, 2nd order
-    b = [0.04856935192323814 0.09713870384647628 0.04856935192323814];
-    a = [1 -0.7458655782462117 -0.059857014060835656];
+    if filter_type == "LPF"
+        % f_c = 5 kHz, Q = 0.27, 2nd order
+        % b = [0.04856935192323814 0.09713870384647628 0.04856935192323814];
+        % a = [1 -0.7458655782462117 -0.059857014060835656];
+        % f_c = 800 Hz, Q = 0.27, 2nd order
+        b = [0.002294837753273866 0.004589675506547732 0.002294837753273866];
+        a = [1 -1.6664642575322546 0.6756436085453501];
+    elseif filter_type == "High Shelf"
+        % f_c = 5 kHz, Q = 0.7071, +3 dB, 2nd order
+        b = [1.3153220258055074 -1.6264232110557726 0.600024686553278];
+        a = [1 -1.109228792618427 0.39815229392143964];
+    else
+        error("Filter type not recognised. Use 'LPF' or 'High Shelf'.");
+    end
+
     sos = dsp.SOSFilter(b, a);
 
     for row = 1:num_rows
