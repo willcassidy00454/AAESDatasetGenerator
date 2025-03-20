@@ -1,0 +1,9 @@
+Routings
+1. Identity
+2. All Ones
+3. Lateral Focus
+4. Frontal Focus
+5. Frontal Only
+6. Rear Only
+7. Lateral Only
+8. Right Only
