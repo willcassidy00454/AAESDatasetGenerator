@@ -1,13 +1,10 @@
 #%% Imports
-import random
-
 from treble_tsdk.tsdk import TSDK
 from treble_tsdk import display_data as dd
 from treble_tsdk import treble
+import numpy as np
 
 tsdk = TSDK()
-
-import numpy as np
 
 #%% Function definitions
 def readDatToArray(read_dir):
@@ -23,7 +20,7 @@ def readCsvToArray(read_dir):
     return np.genfromtxt(read_dir, dtype=str, delimiter=",")
 
 
-#%% Load room dims and surface materials
+#%% Load room dims and make material assignments
 num_rooms = 3
 
 # Indices: (room_index, dimension (x/y/z))
@@ -32,9 +29,21 @@ room_dimensions = np.empty((num_rooms,3))
 for room_index in range(num_rooms):
     room_dimensions[room_index] = readDatToArray(f"Simulation Parameters/Room Dimensions/room_dimensions_{room_index + 1}.dat")
 
-# Load surface materials
-# Indices: (room_index, surface_index (front/rear/left/right/floor/ceiling))
+# Indices: (room_index, surface_index (walls/floor/ceiling))
+surface_material_ids = np.empty((num_rooms, 3), dtype=object)
 
+for room_index in range(num_rooms):
+    surface_material_ids[room_index] = readCsvToArray(f"Simulation Parameters/Surface Materials/surface_materials_{room_index + 1}.csv")
+
+# Indices: (room_index, surface_index (walls/floor/ceiling))
+material_assignments = [[] for i in range(num_rooms)]
+layers = ["shoebox_walls", "shoebox_floor", "shoebox_ceiling"]
+
+for room_index in range(num_rooms):
+    for surface_index in range(3):
+        layer = layers[surface_index]
+        material = tsdk.material_library.get_by_id(surface_material_ids[room_index][surface_index])
+        material_assignments[room_index].append(treble.MaterialAssignment(layer, material))
 
 #%% Load transducer coords, transducer directivities, and transducer rotations
 num_sources = 1

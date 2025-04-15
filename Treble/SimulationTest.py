@@ -51,6 +51,7 @@ room.add_geometry_component("my_table", table, treble.Transform3d(table_pos, tre
 # plot the room
 room.plot()
 
+#%%
 # add the room to the project
 # model = project.add_model("RoomTest", room)
 model = project.get_model_by_name("RoomTest")
@@ -96,7 +97,7 @@ for layer in model.layer_names:
             )
 
 # show the material assignment
-dd.display(material_assignment)
+# dd.display(material_assignment)
 
 #%%
 receivers = [treble.Receiver.make_spatial(
