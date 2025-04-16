@@ -23,7 +23,7 @@ def readCsvToArray(read_dir):
 
 
 #%% Load room dims and make material assignments
-num_rooms = 3
+num_rooms = 1 #3
 
 # Indices: (room_index, dimension (x/y/z))
 room_dimensions = np.empty((num_rooms,3))
@@ -32,20 +32,16 @@ for room_index in range(num_rooms):
     room_dimensions[room_index] = readDatToArray(f"Simulation Parameters/Room Dimensions/room_dimensions_{room_index + 1}.dat")
 
 # Indices: (room_index, surface_index (walls/floor/ceiling))
-surface_material_ids = np.empty((num_rooms, 3), dtype=object)
-
-for room_index in range(num_rooms):
-    surface_material_ids[room_index] = readCsvToArray(f"Simulation Parameters/Surface Materials/surface_materials_{room_index + 1}.csv")
-
-# Indices: (room_index, surface_index (walls/floor/ceiling))
 material_assignments = [[] for i in range(num_rooms)]
-layers = ["angledShoebox_walls", "angledShoebox_floor", "angledShoebox_ceiling"]
+layer_names = ["angledShoebox_wall_0", "angledShoebox_wall_1", "angledShoebox_wall_2", "angledShoebox_wall_3", "angledShoebox_floor", "angledShoebox_ceiling"]
+corresponding_surfaces = ["non_frontal_wall", "non_frontal_wall", "non_frontal_wall", "front_wall", "floor", "ceiling"]
 
 for room_index in range(num_rooms):
-    for surface_index in range(3):
-        layer = layers[surface_index]
-        material = tsdk.material_library.get_by_id(surface_material_ids[room_index][surface_index])
-        material_assignments[room_index].append(treble.MaterialAssignment(layer, material))
+    for layer_index in range(len(layer_names)):
+        layer_name = layer_names[layer_index]
+        # get_by_name doesn't seem to work... search does though, but we need one element so take the first
+        material = tsdk.material_library.search(f"room_{room_index + 1}_{corresponding_surfaces[layer_index]}")[0]
+        material_assignments[room_index].append(treble.MaterialAssignment(layer_name, material))
 
 #%% Load transducer coords, transducer directivities, and transducer rotations
 num_sources = 1
@@ -99,12 +95,12 @@ for room_index in range(num_rooms):
         height_z=float(room_dimensions[room_index][2]),
         left_angle=89,
         right_angle=91,
-        join_wall_layers=True))
+        join_wall_layers=False))
 
 # plot the room
 # rooms[0].plot()
 
-#%% Define transducers for each room
+#%% Full Simulation Only: define transducers for each room
 # Indices: (room_index, transducer_index)
 sources = [[] for i in range(num_rooms)]
 receivers = [[] for i in range(num_rooms)]
@@ -159,7 +155,39 @@ for room_index in range(num_rooms):
     # models.append(project.add_model(f"room_{room_index + 1}", rooms[room_index]))
     models.append(project.get_model_by_name(f"room_{room_index + 1}"))
 
-#%% Create simulation definition for validating the reverberation times of each room
+#%% RT Validation: create simulation definition for validating the reverberation times of each room
+estimated_t60 = 1.5
+estimated_volume = 900.0
+schroeder_frequency = 2000.0 * np.sqrt(estimated_t60 / estimated_volume)
+crossover_frequency = int(4.0 * schroeder_frequency)
+
+sim_defs = []
+
+for room_index in range(num_rooms):
+    sim_defs.append(treble.SimulationDefinition(
+            name=f"rt_validation_room_{room_index + 1}", # unique name of the simulation
+            simulation_type=treble.SimulationType.hybrid, # the type of simulation
+            crossover_frequency=crossover_frequency,
+            model=models[room_index], # the model we created in an earlier step
+            energy_decay_threshold=40, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
+            receiver_list=[treble.Receiver.make_mono(position=treble.Point3d(float(rec_coords[room_index][0][0]),
+                                                                             float(rec_coords[room_index][0][1]),
+                                                                             float(rec_coords[room_index][0][2])),
+                                                     label="receiver_1")],
+            source_list=[treble.Source.make_omni(position=treble.Point3d(float(src_coords[room_index][0][0]),
+                                                                         float(src_coords[room_index][0][1]),
+                                                                         float(src_coords[room_index][0][2])),
+                                                 label="source_1")],
+            material_assignment=material_assignments[room_index]))
+
+    # double check that all the receivers and sources fall within the room
+    sim_defs[room_index].remove_invalid_receivers()
+    sim_defs[room_index].remove_invalid_sources()
+
+    # plot the simulation before adding it to the project
+    # sim_defs[room_index].plot()
+
+#%% Full Simulation: create simulation definitions for all room conditions
 estimated_t60 = 2.5
 estimated_volume = 5000.0
 schroeder_frequency = 2000.0 * np.sqrt(estimated_t60 / estimated_volume)
@@ -182,25 +210,18 @@ for room_index in range(num_rooms):
     sim_defs[room_index].remove_invalid_receivers()
     sim_defs[room_index].remove_invalid_sources()
 
-    # plot the simulation before adding it to the project
-    # sim_defs[room_index].plot()
-
-#%% Create simulation definitions for all room conditions and add to project
-
 #%% Add simulations to project
 simulations = []
 
-for room_index in range(1):#num_rooms):
+for room_index in range(num_rooms):
     simulations.append(project.add_simulation(sim_defs[room_index]))
 
-#%% Get simulations
+#%% Get and display simulations
 simulations = project.get_simulations()
-
-#%% Display simulations
 dd.display(project.get_simulations())
 
 #%% Delete simulation
-# project.delete_simulation(project.get_simulation("3cb5b491-3b8a-407b-8d9f-954ae49ebb1c"))
+project.delete_simulation(project.get_simulation("89e99810-9751-480e-b4dd-0658b7cd3bc3"))
 
 #%% Run simulations
 for simulation in simulations:
@@ -211,9 +232,9 @@ for simulation in simulations:
 results = []
 
 for simulation in simulations:
-    # results.append(simulation.download_results(f"Treble/Results/{simulation.name}"))
-    results.append(simulation.get_results_object(f"Treble/Results/{simulation.name}"))
+    results.append(simulation.download_results(f"Treble/Results/{simulation.name}"))
+    # results.append(simulation.get_results_object(f"Treble/Results/{simulation.name}"))
 
 #%% Plot results/acoustic params
-results[0].plot()
-# results[0].get_acoustic_parameters("source_1", "receiver_1").plot()
+# results[0].plot()
+results[0].get_acoustic_parameters("source_1", "receiver_1").plot()
