@@ -129,20 +129,21 @@ for room_index in range(num_rooms):
                                                                     label=f"ls_{ls_index + 1}"))
     for mic_index in range(num_mics):
         if mic_directivities[room_index][mic_index] == "OMNI":
-            microphones[room_index].append(treble.Source.make_omni(position=treble.Point3d(float(mic_coords[room_index][mic_index][0]),
+            microphones[room_index].append(treble.Receiver.make_mono(position=treble.Point3d(float(mic_coords[room_index][mic_index][0]),
                                                                                            float(mic_coords[room_index][mic_index][1]),
                                                                                            float(mic_coords[room_index][mic_index][2])),
                                                                     label=f"mic_{mic_index + 1}"))
+        # # # # This needs changing to add a first order SH receiver, then post-processing is required to extract the
+        # cardioid responses at the correct rotation:
         elif mic_directivities[room_index][mic_index] == "CARDIOID":
-            microphones[room_index].append(treble.Source.make_cardioid(position=treble.Point3d(float(mic_coords[room_index][mic_index][0]),
+            microphones[room_index].append(treble.Receiver.make_mono(position=treble.Point3d(float(mic_coords[room_index][mic_index][0]),
                                                                                                float(mic_coords[room_index][mic_index][1]),
                                                                                                float(mic_coords[room_index][mic_index][2])),
-                                                                        orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
-                                                                                                    elevation=float(mic_rotations[room_index][mic_index][1])),
+                                                                        # orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
+                                                                        #                             elevation=float(mic_rotations[room_index][mic_index][1])),
                                                                         label=f"mic_{mic_index + 1}"))
         else:
             warnings.warn(f"Directivity '{mic_directivities[room_index][mic_index]}' not recognised.")
-
 #%% Create/load project
 # tsdk.create_project("AAESPerceptualModelDataset")
 project = tsdk.get_by_name("AAESPerceptualModelDataset")
@@ -200,13 +201,16 @@ for room_index in range(num_rooms):
             crossover_frequency=crossover_frequency,
             model=models[room_index], # the model we created in an earlier step
             energy_decay_threshold=40, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
-            receiver_list=receivers[room_index],
-            source_list=sources[room_index],
+            receiver_list=receivers[room_index] + microphones[room_index],
+            source_list=sources[room_index] + loudspeakers[room_index],
             material_assignment=material_assignments[room_index]))
 
     # double check that all the receivers and sources fall within the room
     sim_defs[room_index].remove_invalid_receivers()
     sim_defs[room_index].remove_invalid_sources()
+
+#%% Plot simulation
+sim_defs[2].plot()
 
 #%% Display simulations
 dd.display(project.get_simulations())
