@@ -108,13 +108,14 @@ microphones = [[] for i in range(num_rooms)]
 
 ls_directivity_model = tsdk.source_directivity_library.query(name="8020")[0] # # # # placeholder
 
-# It looks like you can't specify the rotation of a spatial receiver
 for room_index in range(num_rooms):
     assert src_directivities == "OMNI"
     sources[room_index].append(treble.Source.make_omni(position=treble.Point3d(float(src_coords[room_index][0][0]),
                                                                                float(src_coords[room_index][0][1]),
                                                                                float(src_coords[room_index][0][2])),
                                                        label="source_1"))
+
+    # It looks like you don't specify the rotation of a spatial receiver, so this will need doing at reproduction
     assert rec_directivities == "FOURTH ORDER SH"
     receivers[room_index].append(treble.Receiver.make_spatial(position=treble.Point3d(float(rec_coords[room_index][0][0]),
                                                                                       float(rec_coords[room_index][0][1]),
@@ -281,6 +282,7 @@ for room_index in range(num_rooms):
             ir = results[room_index].get_mono_ir(source=source, receiver=receiver)
             ir.write_to_wav(path_to_file=f"../Audio Data/Physical RIRs/Room {room_index + 1}/E_R{receiver_index}_S{source_index}.wav")
 
+        # "F" ls to rec:
         for ls_index in range(num_ls):
             loudspeaker = loudspeakers[room_index][ls_index]
             ir = results[room_index].get_mono_ir(source=loudspeaker, receiver=receiver)
