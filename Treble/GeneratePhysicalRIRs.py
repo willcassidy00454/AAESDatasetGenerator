@@ -1,4 +1,4 @@
-#%% Imports
+#%% Imports and function definitions
 import warnings
 
 from treble_tsdk.tsdk import TSDK
@@ -8,7 +8,6 @@ import numpy as np
 
 tsdk = TSDK()
 
-#%% Function definitions
 def readDatToArray(read_dir):
     return np.array(np.genfromtxt(read_dir,
                      skip_header=0,
@@ -23,7 +22,7 @@ def readCsvToArray(read_dir):
 
 
 #%% Load room dims and make material assignments
-num_rooms = 1 #3
+num_rooms = 3
 
 # Indices: (room_index, dimension (x/y/z))
 room_dimensions = np.empty((num_rooms,3))
@@ -85,7 +84,7 @@ for room_index in range(num_rooms):
     ls_rotations[room_index] = readDatToArray(f"Simulation Parameters/Transducer Rotations/ls_rotations_{room_index + 1}.dat")
     mic_rotations[room_index] = readDatToArray(f"Simulation Parameters/Transducer Rotations/mic_rotations_{room_index + 1}.dat")
 
-#%% Create rooms
+#%% Create rooms (not required if loading models from project)
 rooms = []
 
 for room_index in range(num_rooms):
@@ -156,46 +155,45 @@ for room_index in range(num_rooms):
     models.append(project.get_model_by_name(f"room_{room_index + 1}"))
 
 #%% RT Validation: create simulation definition for validating the reverberation times of each room
-estimated_t60 = 1.5
-estimated_volume = 900.0
-schroeder_frequency = 2000.0 * np.sqrt(estimated_t60 / estimated_volume)
+room_index_to_validate = 2 # Starts at 0
+
+estimated_t60s = [1.5, 1.5, 2.0]
+estimated_volumes = [900.0, 8000.0, 6100.0]
+schroeder_frequency = 2000.0 * np.sqrt(estimated_t60s[room_index_to_validate] / estimated_volumes[room_index_to_validate])
 crossover_frequency = int(4.0 * schroeder_frequency)
 
-sim_defs = []
+sim_defs = [(treble.SimulationDefinition(
+        name=f"rt_validation_room_{room_index_to_validate + 1}", # unique name of the simulation
+        simulation_type=treble.SimulationType.hybrid, # the type of simulation
+        crossover_frequency=crossover_frequency,
+        model=models[room_index_to_validate], # the model we created in an earlier step
+        energy_decay_threshold=40, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
+        receiver_list=[treble.Receiver.make_mono(position=treble.Point3d(float(rec_coords[room_index_to_validate][0][0]),
+                                                                         float(rec_coords[room_index_to_validate][0][1]),
+                                                                         float(rec_coords[room_index_to_validate][0][2])),
+                                                 label="receiver_1")],
+        source_list=[treble.Source.make_omni(position=treble.Point3d(float(src_coords[room_index_to_validate][0][0]),
+                                                                     float(src_coords[room_index_to_validate][0][1]),
+                                                                     float(src_coords[room_index_to_validate][0][2])),
+                                             label="source_1")],
+        material_assignment=material_assignments[room_index_to_validate]))]
 
-for room_index in range(num_rooms):
-    sim_defs.append(treble.SimulationDefinition(
-            name=f"rt_validation_room_{room_index + 1}", # unique name of the simulation
-            simulation_type=treble.SimulationType.hybrid, # the type of simulation
-            crossover_frequency=crossover_frequency,
-            model=models[room_index], # the model we created in an earlier step
-            energy_decay_threshold=40, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
-            receiver_list=[treble.Receiver.make_mono(position=treble.Point3d(float(rec_coords[room_index][0][0]),
-                                                                             float(rec_coords[room_index][0][1]),
-                                                                             float(rec_coords[room_index][0][2])),
-                                                     label="receiver_1")],
-            source_list=[treble.Source.make_omni(position=treble.Point3d(float(src_coords[room_index][0][0]),
-                                                                         float(src_coords[room_index][0][1]),
-                                                                         float(src_coords[room_index][0][2])),
-                                                 label="source_1")],
-            material_assignment=material_assignments[room_index]))
+# double check that all the receivers and sources fall within the room
+sim_defs[0].remove_invalid_receivers()
+sim_defs[0].remove_invalid_sources()
 
-    # double check that all the receivers and sources fall within the room
-    sim_defs[room_index].remove_invalid_receivers()
-    sim_defs[room_index].remove_invalid_sources()
-
-    # plot the simulation before adding it to the project
-    # sim_defs[room_index].plot()
+# plot the simulation before adding it to the project
+# sim_defs[0].plot()
 
 #%% Full Simulation: create simulation definitions for all room conditions
-estimated_t60 = 2.5
-estimated_volume = 5000.0
-schroeder_frequency = 2000.0 * np.sqrt(estimated_t60 / estimated_volume)
-crossover_frequency = int(4.0 * schroeder_frequency)
-
 sim_defs = []
 
 for room_index in range(num_rooms):
+    estimated_t60s = [1.5, 1.5, 2.0]
+    estimated_volumes = [900.0, 8000.0, 6100.0]
+    schroeder_frequency = 2000.0 * np.sqrt(estimated_t60s[room_index] / estimated_volumes[room_index])
+    crossover_frequency = int(4.0 * schroeder_frequency)
+
     sim_defs.append(treble.SimulationDefinition(
             name=f"rt_validation_room_{room_index + 1}", # unique name of the simulation
             simulation_type=treble.SimulationType.hybrid, # the type of simulation
@@ -210,23 +208,24 @@ for room_index in range(num_rooms):
     sim_defs[room_index].remove_invalid_receivers()
     sim_defs[room_index].remove_invalid_sources()
 
+#%% Display simulations
+dd.display(project.get_simulations())
+
+#%% RT Validation: delete validation simulation
+project.delete_simulation(project.get_simulation_by_name(f"rt_validation_room_{room_index_to_validate + 1}"))
+
 #%% Add simulations to project
 simulations = []
 
-for room_index in range(num_rooms):
-    simulations.append(project.add_simulation(sim_defs[room_index]))
-
-#%% Get and display simulations
-simulations = project.get_simulations()
-dd.display(project.get_simulations())
-
-#%% Delete simulation
-project.delete_simulation(project.get_simulation("89e99810-9751-480e-b4dd-0658b7cd3bc3"))
+for sim_index in range(len(sim_defs)):
+    simulations.append(project.add_simulation(sim_defs[sim_index]))
 
 #%% Run simulations
 for simulation in simulations:
     simulation.start()
-    simulation.as_live_progress()
+
+# This will log a message when simulations complete
+project.as_live_progress()
 
 #%% Download/load simulations
 results = []
@@ -236,5 +235,8 @@ for simulation in simulations:
     # results.append(simulation.get_results_object(f"Treble/Results/{simulation.name}"))
 
 #%% Plot results/acoustic params
-# results[0].plot()
-results[0].get_acoustic_parameters("source_1", "receiver_1").plot()
+results[0].plot()
+# results[0].get_acoustic_parameters("source_1", "receiver_1").plot()
+
+#%% Save wav
+results[0].get_mono_ir("source_1", "receiver_1").write_to_wav(path_to_file="room_2.wav")
