@@ -106,6 +106,8 @@ receivers = [[] for i in range(num_rooms)]
 loudspeakers = [[] for i in range(num_rooms)]
 microphones = [[] for i in range(num_rooms)]
 
+ls_directivity_model = tsdk.source_directivity_library.query(name="8020")[0] # # # # placeholder
+
 # It looks like you can't specify the rotation of a spatial receiver
 for room_index in range(num_rooms):
     assert src_directivities == "OMNI"
@@ -121,12 +123,13 @@ for room_index in range(num_rooms):
                                                               ambisonics_order=4))
     for ls_index in range(num_ls):
         assert ls_directivities[room_index][ls_index] == "CARDIOID"
-        loudspeakers[room_index].append(treble.Source.make_cardioid(position=treble.Point3d(float(ls_coords[room_index][ls_index][0]),
+        loudspeakers[room_index].append(treble.Source.make_directive(position=treble.Point3d(float(ls_coords[room_index][ls_index][0]),
                                                                                             float(ls_coords[room_index][ls_index][1]),
                                                                                             float(ls_coords[room_index][ls_index][2])),
-                                                                    orientation=treble.Rotation(azimuth=float(ls_rotations[room_index][ls_index][0]),
-                                                                                                elevation=float(ls_rotations[room_index][ls_index][1])),
-                                                                    label=f"ls_{ls_index + 1}"))
+                                                                     orientation=treble.Rotation(azimuth=float(ls_rotations[room_index][ls_index][0]),
+                                                                                                 elevation=float(ls_rotations[room_index][ls_index][1])),
+                                                                     label=f"ls_{ls_index + 1}",
+                                                                     source_directivity=ls_directivity_model))
     for mic_index in range(num_mics):
         # For both cardioid and omni mics, use first-order SHs as these will be modelled spatially.
         # These need to be post-processed to extract the device IRs with the correct rotation applied
