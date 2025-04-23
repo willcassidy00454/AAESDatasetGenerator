@@ -260,7 +260,7 @@ for room_index in range(num_rooms):
             device_ir = spatial_ir.render_device_ir(device=device_model,
                                                     orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
                                                                                 elevation=float(mic_rotations[room_index][mic_index][1])))
-            device_ir.write_to_wav(path_to_file=f"../Audio Data/Physical RIRs/Room {room_index + 1}/G_R{mic_index}_S{source_index}.wav", normalize=False)
+            device_ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1}/G_R{mic_index}_S{source_index}.wav", normalize=False)
 
         # Loudspeakers to microphones ("H" matrix):
         for ls_index in range(num_ls):
@@ -270,7 +270,7 @@ for room_index in range(num_rooms):
             device_ir = spatial_ir.render_device_ir(device=device_model,
                                                     orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
                                                                                 elevation=float(mic_rotations[room_index][mic_index][1])))
-            device_ir.write_to_wav(path_to_file=f"../Audio Data/Physical RIRs/Room {room_index + 1}/H_R{mic_index}_S{ls_index}.wav", normalize=False)
+            device_ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1}/H_R{mic_index}_S{ls_index}.wav", normalize=False)
 
 #%% Full Simulation: save other .wav files ("E" src to rec, "F" ls to rec)
 for room_index in range(num_rooms):
@@ -280,13 +280,13 @@ for room_index in range(num_rooms):
         for source_index in range(num_sources):
             source = sources[room_index][source_index]
             ir = results[room_index].get_mono_ir(source=source, receiver=receiver)
-            ir.write_to_wav(path_to_file=f"../Audio Data/Physical RIRs/Room {room_index + 1}/E_R{receiver_index}_S{source_index}.wav", normalize=False)
+            ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1}/E_R{receiver_index}_S{source_index}.wav", normalize=False)
 
         # "F" ls to rec:
         for ls_index in range(num_ls):
             loudspeaker = loudspeakers[room_index][ls_index]
             ir = results[room_index].get_mono_ir(source=loudspeaker, receiver=receiver)
-            ir.write_to_wav(path_to_file=f"../Audio Data/Physical RIRs/Room {room_index + 1}/F_R{receiver_index}_S{ls_index}.wav", normalize=False)
+            ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1}/F_R{receiver_index}_S{ls_index}.wav", normalize=False)
 
 #%% Plot results/acoustic params
 results[0].plot()

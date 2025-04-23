@@ -138,15 +138,15 @@ simulation.start()
 dd.display(simulation.get_tasks())
 
 #%% Download results and save to .wavs
-results = simulation.download_results(f'Validation Results/{simulation.name}')
+results = simulation.download_results(f'Treble/Validation Results/{simulation.name}')
 
 for source_index in range(8):
     ir = results.get_spatial_ir(source=sources[source_index].label, receiver=receiver[0].label)
     ir.write_to_wav(
-        path_to_file=f"Validation Results/Validation RIRs/horizontal_{source_index + 1}.wav")
+        path_to_file=f"Audio Data/Validation Results/Validation RIRs/horizontal_{source_index + 1}.wav")
     ir = results.get_spatial_ir(source=sources[source_index + 8].label, receiver=receiver[0].label)
     ir.write_to_wav(
-        path_to_file=f"Validation Results/Validation RIRs/median_{source_index + 1}.wav")
+        path_to_file=f"Audio Data/Validation Results/Validation RIRs/median_{source_index + 1}.wav")
     ir = results.get_spatial_ir(source=sources[source_index + 16].label, receiver=receiver[0].label)
     ir.write_to_wav(
-        path_to_file=f"Validation Results/Validation RIRs/interaural_{source_index + 1}.wav")
+        path_to_file=f"Audio Data/Validation Results/Validation RIRs/interaural_{source_index + 1}.wav")
