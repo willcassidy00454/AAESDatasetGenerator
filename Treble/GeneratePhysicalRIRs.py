@@ -57,9 +57,10 @@ def findMaxInResults():
 
 #%% Load room dims and make material assignments
 num_rooms = 1
+num_absorptions = 3
 
 # Indices: (room_index, dimension (x/y/z))
-room_dimensions = np.empty((num_rooms,3))
+room_dimensions = np.empty((num_rooms, 3))
 
 for room_index in range(num_rooms):
     room_dimensions[room_index] = readDatToArray(f"Simulation Parameters/Room Dimensions/room_dimensions_{room_index + 1}.dat")
@@ -69,12 +70,12 @@ material_assignments = [[] for i in range(num_rooms)]
 layer_names = ["angledShoebox_wall_0", "angledShoebox_wall_1", "angledShoebox_wall_2", "angledShoebox_wall_3", "angledShoebox_floor", "angledShoebox_ceiling"]
 corresponding_surfaces = ["non_frontal_wall", "non_frontal_wall", "non_frontal_wall", "front_wall", "floor", "ceiling"]
 
-for room_index in range(num_rooms):
+for absorption_index in range(num_absorptions):
     for layer_index in range(len(layer_names)):
         layer_name = layer_names[layer_index]
         # get_by_name doesn't seem to work... search does though, but we need one element so take the first
-        material = tsdk.material_library.search(f"room_{room_index + 1}_{corresponding_surfaces[layer_index]}")[0]
-        material_assignments[room_index].append(treble.MaterialAssignment(layer_name, material))
+        material = tsdk.material_library.search(f"room_{absorption_index + 1}_{corresponding_surfaces[layer_index]}")[0]
+        material_assignments[absorption_index].append(treble.MaterialAssignment(layer_name, material))
 
 #%% Load transducer coords, transducer directivities, and transducer rotations
 num_sources = 1
@@ -223,20 +224,21 @@ sim_defs[0].remove_invalid_sources()
 sim_defs = []
 
 for room_index in range(num_rooms):
-    estimated_t60s = [1.1, 1.1, 1.8]
-    estimated_volumes = [817.0, 5040.0, 9030.0]
-    schroeder_frequency = 2000.0 * np.sqrt(estimated_t60s[room_index] / estimated_volumes[room_index])
-    crossover_frequency = int(4.0 * schroeder_frequency)
+    for absorption_index in range(num_absorptions):
+        estimated_t60s = [1.1, 1.1, 1.8]
+        estimated_volumes = [817.0, 5040.0, 9030.0]
+        schroeder_frequency = 2000.0 * np.sqrt(estimated_t60s[room_index] / estimated_volumes[room_index])
+        crossover_frequency = int(4.0 * schroeder_frequency)
 
-    sim_defs.append(treble.SimulationDefinition(
-            name=f"full_sim_room_{room_index + 1}", # unique name of the simulation
-            simulation_type=treble.SimulationType.hybrid, # the type of simulation
-            crossover_frequency=crossover_frequency,
-            model=models[room_index], # the model we created in an earlier step
-            energy_decay_threshold=40, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
-            receiver_list=receivers[room_index] + microphones[room_index],
-            source_list=sources[room_index] + loudspeakers[room_index],
-            material_assignment=material_assignments[room_index]))
+        sim_defs.append(treble.SimulationDefinition(
+                name=f"full_sim_room_{room_index + 1}_absorption_{absorption_index + 1}", # unique name of the simulation
+                simulation_type=treble.SimulationType.hybrid, # the type of simulation
+                crossover_frequency=crossover_frequency,
+                model=models[room_index], # the model we created in an earlier step
+                energy_decay_threshold=40, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
+                receiver_list=receivers[room_index] + microphones[room_index],
+                source_list=sources[room_index] + loudspeakers[room_index],
+                material_assignment=material_assignments[absorption_index]))
 
     # double check that all the receivers and sources fall within the room
     sim_defs[room_index].remove_invalid_receivers()
@@ -255,15 +257,15 @@ project.delete_simulation(project.get_simulation_by_name(f"rt_validation_room_{r
 simulations = []
 
 for sim_index in range(len(sim_defs)):
-    # simulations.append(project.add_simulation(sim_defs[sim_index]))
-    simulations.append(project.get_simulation_by_name(sim_defs[sim_index].name))
+    simulations.append(project.add_simulation(sim_defs[sim_index]))
+    # simulations.append(project.get_simulation_by_name(sim_defs[sim_index].name))
 
 #%% Run simulations
 for simulation in simulations:
     simulation.start()
 
 # This will log a message when simulations complete
-project.as_live_progress()
+# project.as_live_progress()
 
 #%% Check progress
 dd.display(simulations[0].get_tasks())
@@ -281,60 +283,61 @@ for simulation in simulations:
 # microphone_model_cardioid = tsdk.device_library.get_by_name("microphone_model_cardioid") # # # # these are just placeholders
 
 for room_index in range(num_rooms):
-    # Find max value of all results
-    overall_max = findMaxInResults()
+    for absorption_index in range(num_absorptions):
+        # Find max value of all results
+        overall_max = findMaxInResults()
 
-    # Save all IRs using batch normalisation
-    for mic_index in range(num_mics):
-        microphone = microphones[room_index][mic_index]
+        # Save all IRs using batch normalisation
+        for mic_index in range(num_mics):
+            microphone = microphones[room_index][mic_index]
 
-        # if mic_directivities[room_index][mic_index] == "OMNI":
-        #     device_model = microphone_model_omni
-        # elif mic_directivities[room_index][mic_index] == "CARDIOID":
-        #     device_model = microphone_model_cardioid
-        # else:
-        #     warnings.warn("Microphone directivity not recognised.")
+            # if mic_directivities[room_index][mic_index] == "OMNI":
+            #     device_model = microphone_model_omni
+            # elif mic_directivities[room_index][mic_index] == "CARDIOID":
+            #     device_model = microphone_model_cardioid
+            # else:
+            #     warnings.warn("Microphone directivity not recognised.")
 
-        # Sources to microphones ("G" matrix):
-        for source_index in range(num_sources):
-            source = sources[room_index][source_index]
+            # Sources to microphones ("G" matrix):
+            for source_index in range(num_sources):
+                source = sources[room_index][source_index]
 
-            # spatial_ir = results[room_index].get_spatial_ir(source=source.label, receiver=microphone.label)
-            # device_ir = spatial_ir.render_device_ir(device=device_model,
-            #                                         orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
-            #                                                                     elevation=float(mic_rotations[room_index][mic_index][1])))
-            device_ir = results[room_index].get_spatial_ir(source=source.label, receiver=microphone.label) # # # # for test only
-            device_ir.data /= overall_max
-            device_ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1}/G_R{mic_index + 1}_S{source_index + 1}.wav", normalize=False)
+                # spatial_ir = results[room_index].get_spatial_ir(source=source.label, receiver=microphone.label)
+                # device_ir = spatial_ir.render_device_ir(device=device_model,
+                #                                         orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
+                #                                                                     elevation=float(mic_rotations[room_index][mic_index][1])))
+                device_ir = results[room_index].get_spatial_ir(source=source.label, receiver=microphone.label) # # # # for test only
+                device_ir.data /= overall_max
+                device_ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/G_R{mic_index + 1}_S{source_index + 1}.wav", normalize=False)
 
-        # Loudspeakers to microphones ("H" matrix):
-        for ls_index in range(num_ls):
-            loudspeaker = loudspeakers[room_index][ls_index]
+            # Loudspeakers to microphones ("H" matrix):
+            for ls_index in range(num_ls):
+                loudspeaker = loudspeakers[room_index][ls_index]
 
-            # spatial_ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label)
-            # device_ir = spatial_ir.render_device_ir(device=device_model,
-            #                                         orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
-            #                                                                     elevation=float(mic_rotations[room_index][mic_index][1])))
-            device_ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label) # # # # for test only
-            device_ir.data /= overall_max
-            device_ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1}/H_R{mic_index + 1}_S{ls_index + 1}.wav", normalize=False)
+                # spatial_ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label)
+                # device_ir = spatial_ir.render_device_ir(device=device_model,
+                #                                         orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
+                #                                                                     elevation=float(mic_rotations[room_index][mic_index][1])))
+                device_ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label) # # # # for test only
+                device_ir.data /= overall_max
+                device_ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/H_R{mic_index + 1}_S{ls_index + 1}.wav", normalize=False)
 
-    # Save other .wav files ("E" src to rec, "F" ls to rec)
-    for receiver_index in range(num_receivers):
-        receiver = receivers[room_index][receiver_index]
-        # "E" src to rec:
-        for source_index in range(num_sources):
-            source = sources[room_index][source_index]
-            ir = results[room_index].get_mono_ir(source=source.label, receiver=receiver.label)
-            ir.data /= overall_max
-            ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1}/E_R{receiver_index + 1}_S{source_index + 1}.wav", normalize=False)
+        # Save other .wav files ("E" src to rec, "F" ls to rec)
+        for receiver_index in range(num_receivers):
+            receiver = receivers[room_index][receiver_index]
+            # "E" src to rec:
+            for source_index in range(num_sources):
+                source = sources[room_index][source_index]
+                ir = results[room_index].get_mono_ir(source=source.label, receiver=receiver.label)
+                ir.data /= overall_max
+                ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/E_R{receiver_index + 1}_S{source_index + 1}.wav", normalize=False)
 
-        # "F" ls to rec:
-        for ls_index in range(num_ls):
-            loudspeaker = loudspeakers[room_index][ls_index]
-            ir = results[room_index].get_mono_ir(source=loudspeaker.label, receiver=receiver.label)
-            ir.data /= overall_max
-            ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1}/F_R{receiver_index + 1}_S{ls_index + 1}.wav", normalize=False)
+            # "F" ls to rec:
+            for ls_index in range(num_ls):
+                loudspeaker = loudspeakers[room_index][ls_index]
+                ir = results[room_index].get_mono_ir(source=loudspeaker.label, receiver=receiver.label)
+                ir.data /= overall_max
+                ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/F_R{receiver_index + 1}_S{ls_index + 1}.wav", normalize=False)
 
 #%% Plot results/acoustic params
 results[0].plot()
