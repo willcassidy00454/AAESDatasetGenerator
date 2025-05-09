@@ -74,7 +74,7 @@ for absorption_index in range(num_absorptions):
     for layer_index in range(len(layer_names)):
         layer_name = layer_names[layer_index]
         # get_by_name doesn't seem to work... search does though, but we need one element so take the first
-        material = tsdk.material_library.search(f"room_{absorption_index + 1}_{corresponding_surfaces[layer_index]}")[0]
+        material = tsdk.material_library.get_by_name(f"room_{absorption_index + 1}_{corresponding_surfaces[layer_index]}")
         material_assignments[absorption_index].append(treble.MaterialAssignment(layer_name, material))
 
 #%% Load transducer coords, transducer directivities, and transducer rotations
@@ -252,6 +252,11 @@ dd.display(project.get_simulations())
 
 #%% RT Validation: delete validation simulation
 project.delete_simulation(project.get_simulation_by_name(f"rt_validation_room_{room_index_to_validate + 1}"))
+
+#%% Full Simulation: delete simulations
+for room_index in range(num_rooms):
+    for absorption_index in range(num_absorptions):
+        project.delete_simulation(project.get_simulation_by_name(f"full_sim_room_{room_index + 1}_absorption_{absorption_index + 1}"))
 
 #%% Add simulations to project / get from project
 simulations = []

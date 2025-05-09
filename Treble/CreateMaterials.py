@@ -68,7 +68,7 @@ plt.show()
 
 #%% Replace materials
 for mat_index in range(4):
-    material = tsdk.material_library.search(material_names[mat_index])[0]
+    material = tsdk.material_library.get_by_name(material_names[mat_index])
     tsdk.material_library.delete(material)
 
     current_material = tsdk.material_library.create(fitted_materials[mat_index])
