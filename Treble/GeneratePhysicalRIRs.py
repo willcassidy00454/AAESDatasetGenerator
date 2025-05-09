@@ -88,11 +88,36 @@ def convolveWithMicIR(mono_ir, polar_pattern):
     mic_ir.resample(32000)
     trunc_length = 1720
     mic_ir.data = mic_ir.data.squeeze()[:trunc_length]
+    mic_ir.data = convertToMinimumPhase(mic_ir.data)
 
     conv_ir = mono_ir
     conv_ir.data = np.convolve(mono_ir.data, mic_ir.data)
 
     return conv_ir
+
+
+def convertToMinimumPhase(ir):
+    """Convert a linear-phase IR to minimum-phase using real cepstrum method."""
+    # Take FFT and get log magnitude spectrum
+    N = len(ir)
+    spectrum = np.fft.fft(ir, n=2*N)  # zero-pad for better resolution
+    log_mag = np.log(np.abs(spectrum) + 1e-10)  # avoid log(0)
+
+    # Get the cepstrum (real if signal is real)
+    cepstrum = np.fft.ifft(log_mag).real
+
+    # Create the minimum phase cepstrum
+    min_phase_cepstrum = np.zeros_like(cepstrum)
+    min_phase_cepstrum[0] = cepstrum[0]         # keep DC
+    min_phase_cepstrum[1:N] = 2 * cepstrum[1:N] # double causal part
+
+    # Convert back to frequency domain
+    min_phase_spectrum = np.exp(np.fft.fft(min_phase_cepstrum))
+
+    # Get IR, trimmed to original length
+    min_phase_ir = np.fft.ifft(min_phase_spectrum).real[:N]
+
+    return min_phase_ir
 
 #%% Load room dims and make material assignments
 num_rooms = 1
