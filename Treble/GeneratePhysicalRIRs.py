@@ -28,12 +28,14 @@ def findMaxInResults():
         for source_index in range(num_sources):
             source = sources[room_index][source_index]
             ir = results[room_index].get_mono_ir(source=source.label, receiver=microphone.label)
+            ir = convolveWithMicIR(ir, "Omni") # Convolve with a mic IR to ensure any conv gain is compensated for
             if np.max(ir.data) > overall_max:
                 overall_max = np.max(ir.data)
 
         for ls_index in range(num_ls):
             loudspeaker = loudspeakers[room_index][ls_index]
             ir = results[room_index].get_mono_ir(source=loudspeaker.label, receiver=microphone.label)
+            ir = convolveWithMicIR(ir, "Omni") # Convolve with a mic IR to ensure any conv gain is compensated for
             if np.max(ir.data) > overall_max:
                 overall_max = np.max(ir.data)
 
@@ -55,9 +57,46 @@ def findMaxInResults():
     return overall_max
 
 
+def getCardioidFrom1stOrder(first_order_ir, orientation_az_el):
+    azimuth_deg = orientation_az_el[0]
+    elevation_deg = orientation_az_el[1]
+
+    azimuth_rad = np.deg2rad(azimuth_deg)
+    elevation_rad = np.deg2rad(elevation_deg)
+
+    a_coeffs = np.zeros(4)
+    a_coeffs[0] = 1.0 / np.sqrt(2.0)
+    a_coeffs[1] = np.cos(elevation_rad) * np.cos(azimuth_rad)
+    a_coeffs[2] = np.cos(elevation_rad) * np.sin(azimuth_rad)
+    a_coeffs[3] = np.sin(elevation_rad)
+
+    mono_ir = np.zeros(len(first_order_ir.data[0]))
+
+    for channel in range(4):
+        mono_ir = np.add(mono_ir, a_coeffs[channel] * first_order_ir.data[channel])
+
+    return treble.MonoIR(data=np.float32(mono_ir),
+                         sampling_rate=first_order_ir.sampling_rate,
+                         normalization_coefficient=first_order_ir.normalization_coefficient,
+                         zero_pad_samples=first_order_ir.zero_pad_samples)
+
+
+def convolveWithMicIR(mono_ir, polar_pattern):
+    assert polar_pattern == "Omni" or polar_pattern == "Cardioid"
+
+    mic_ir = treble.AudioSignal.from_file(f"Treble/Microphone IRs/SchoepsCMC5U{polar_pattern}_50cm_0Deg_32bit.wav")
+    mic_ir.resample(32000)
+    trunc_length = 1720
+    mic_ir.data = mic_ir.data.squeeze()[:trunc_length]
+
+    conv_ir = mono_ir
+    conv_ir.data = np.convolve(mono_ir.data, mic_ir.data)
+
+    return conv_ir
+
 #%% Load room dims and make material assignments
 num_rooms = 1
-num_absorptions = 3
+num_absorptions = 1
 
 # Indices: (room_index, dimension (x/y/z))
 room_dimensions = np.empty((num_rooms, 3))
@@ -66,7 +105,7 @@ for room_index in range(num_rooms):
     room_dimensions[room_index] = readDatToArray(f"Simulation Parameters/Room Dimensions/room_dimensions_{room_index + 1}.dat")
 
 # Indices: (room_index, surface_index (walls/floor/ceiling))
-material_assignments = [[] for i in range(num_rooms)]
+material_assignments = [[] for i in range(num_absorptions)]
 layer_names = ["angledShoebox_wall_0", "angledShoebox_wall_1", "angledShoebox_wall_2", "angledShoebox_wall_3", "angledShoebox_floor", "angledShoebox_ceiling"]
 corresponding_surfaces = ["non_frontal_wall", "non_frontal_wall", "non_frontal_wall", "front_wall", "floor", "ceiling"]
 
@@ -169,12 +208,17 @@ for room_index in range(num_rooms):
     for mic_index in range(num_mics):
         # For both cardioid and omni mics, use first-order SHs as these will be modelled spatially.
         # These need to be post-processed to extract the device IRs with the correct rotation applied
-        if mic_directivities[room_index][mic_index] == "CARDIOID" or mic_directivities[room_index][mic_index] == "OMNI":
+        if mic_directivities[room_index][mic_index] == "CARDIOID":
             microphones[room_index].append(treble.Receiver.make_spatial(position=treble.Point3d(float(mic_coords[room_index][mic_index][0]),
                                                                                                float(mic_coords[room_index][mic_index][1]),
                                                                                                float(mic_coords[room_index][mic_index][2])),
                                                                         label=f"mic_{mic_index + 1}",
                                                                         ambisonics_order=1))
+        elif mic_directivities[room_index][mic_index] == "OMNI":
+            microphones[room_index].append(treble.Receiver.make_mono(position=treble.Point3d(float(mic_coords[room_index][mic_index][0]),
+                                                                                               float(mic_coords[room_index][mic_index][1]),
+                                                                                               float(mic_coords[room_index][mic_index][2])),
+                                                                        label=f"mic_{mic_index + 1}"))
         else:
             warnings.warn(f"Directivity '{mic_directivities[room_index][mic_index]}' not recognised.")
 
@@ -190,7 +234,7 @@ for room_index in range(num_rooms):
     models.append(project.get_model_by_name(f"room_{room_index + 1}"))
 
 #%% RT Validation: create simulation definition for validating the reverberation times of each room
-room_index_to_validate = 0 # Starts at 0
+room_index_to_validate = 2 # Starts at 0, uses corresponding absorption set
 
 estimated_t60s = [1.1, 1.1, 1.8]
 estimated_volumes = [817.0, 5040.0, 9030.0]
@@ -202,7 +246,7 @@ sim_defs = [(treble.SimulationDefinition(
         simulation_type=treble.SimulationType.hybrid, # the type of simulation
         crossover_frequency=crossover_frequency,
         model=models[room_index_to_validate], # the model we created in an earlier step
-        energy_decay_threshold=20, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
+        energy_decay_threshold=40, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
         receiver_list=[treble.Receiver.make_mono(position=treble.Point3d(float(rec_coords[room_index_to_validate][0][0]),
                                                                          float(rec_coords[room_index_to_validate][0][1]),
                                                                          float(rec_coords[room_index_to_validate][0][2])),
@@ -275,17 +319,16 @@ for simulation in simulations:
 #%% Check progress
 dd.display(simulations[0].get_tasks())
 
-#%% Download/load simulations
+#%% Download/load simulation results
 results = []
 
 for simulation in simulations:
     results.append(simulation.download_results(f"Treble/Results/{simulation.name}"))
     # results.append(simulation.get_results_object(f"Treble/Results/{simulation.name}"))
 
-#%% Full Simulation: extract mono IRs from the first-order SH microphone IRs, applying the rotations and DRTFs.
-# Save these into a folder with labels "G" (source to mics) and "H" (ls to mics) in the format "G_R1_S1"
-# microphone_model_omni = tsdk.device_library.get_by_name("microphone_model_omni")
-# microphone_model_cardioid = tsdk.device_library.get_by_name("microphone_model_cardioid") # # # # these are just placeholders
+#%% Full Simulation: extract mono IRs from the first-order ambisonics microphone IRs, applying the rotations and polar
+# patterns. Then, convolve the microphones with omni/cardioid IRs (just with the on-axis IRs for the time being).
+# Save these into a folder with labels "G" (source to mics) and "H" (ls to mics) in the format "G_R1_S1".
 
 for room_index in range(num_rooms):
     for absorption_index in range(num_absorptions):
@@ -296,36 +339,35 @@ for room_index in range(num_rooms):
         for mic_index in range(num_mics):
             microphone = microphones[room_index][mic_index]
 
-            # if mic_directivities[room_index][mic_index] == "OMNI":
-            #     device_model = microphone_model_omni
-            # elif mic_directivities[room_index][mic_index] == "CARDIOID":
-            #     device_model = microphone_model_cardioid
-            # else:
-            #     warnings.warn("Microphone directivity not recognised.")
-
             # Sources to microphones ("G" matrix):
             for source_index in range(num_sources):
                 source = sources[room_index][source_index]
 
-                # spatial_ir = results[room_index].get_spatial_ir(source=source.label, receiver=microphone.label)
-                # device_ir = spatial_ir.render_device_ir(device=device_model,
-                #                                         orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
-                #                                                                     elevation=float(mic_rotations[room_index][mic_index][1])))
-                device_ir = results[room_index].get_spatial_ir(source=source.label, receiver=microphone.label) # # # # for test only
-                device_ir.data /= overall_max
-                device_ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/G_R{mic_index + 1}_S{source_index + 1}.wav", normalize=False)
+                if mic_directivities[room_index][mic_index] == "CARDIOID":
+                    spatial_ir = results[room_index].get_spatial_ir(source=source.label, receiver=microphone.label)
+                    ir = getCardioidFrom1stOrder(spatial_ir, mic_rotations[room_index][mic_index])
+                    ir = convolveWithMicIR(ir, "Cardioid")
+                else:
+                    ir = results[room_index].get_mono_ir(source=source.label, receiver=microphone.label)
+                    ir = convolveWithMicIR(ir, "Omni")
+
+                ir.data /= overall_max
+                ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/G_R{mic_index + 1}_S{source_index + 1}.wav", normalize=False)
 
             # Loudspeakers to microphones ("H" matrix):
             for ls_index in range(num_ls):
                 loudspeaker = loudspeakers[room_index][ls_index]
 
-                # spatial_ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label)
-                # device_ir = spatial_ir.render_device_ir(device=device_model,
-                #                                         orientation=treble.Rotation(azimuth=float(mic_rotations[room_index][mic_index][0]),
-                #                                                                     elevation=float(mic_rotations[room_index][mic_index][1])))
-                device_ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label) # # # # for test only
-                device_ir.data /= overall_max
-                device_ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/H_R{mic_index + 1}_S{ls_index + 1}.wav", normalize=False)
+                if mic_directivities[room_index][mic_index] == "CARDIOID":
+                    spatial_ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label)
+                    ir = getCardioidFrom1stOrder(spatial_ir, mic_rotations[room_index][mic_index])
+                    ir = convolveWithMicIR(ir, "Cardioid")
+                else:
+                    ir = results[room_index].get_mono_ir(source=loudspeaker.label, receiver=microphone.label)
+                    ir = convolveWithMicIR(ir, "Omni")
+
+                ir.data /= overall_max
+                ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/H_R{mic_index + 1}_S{ls_index + 1}.wav", normalize=False)
 
         # Save other .wav files ("E" src to rec, "F" ls to rec)
         for receiver_index in range(num_receivers):
@@ -333,20 +375,16 @@ for room_index in range(num_rooms):
             # "E" src to rec:
             for source_index in range(num_sources):
                 source = sources[room_index][source_index]
-                ir = results[room_index].get_mono_ir(source=source.label, receiver=receiver.label)
+                ir = results[room_index].get_spatial_ir(source=source.label, receiver=receiver.label)
                 ir.data /= overall_max
                 ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/E_R{receiver_index + 1}_S{source_index + 1}.wav", normalize=False)
 
             # "F" ls to rec:
             for ls_index in range(num_ls):
                 loudspeaker = loudspeakers[room_index][ls_index]
-                ir = results[room_index].get_mono_ir(source=loudspeaker.label, receiver=receiver.label)
+                ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=receiver.label)
                 ir.data /= overall_max
                 ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/F_R{receiver_index + 1}_S{ls_index + 1}.wav", normalize=False)
 
 #%% Plot results/acoustic params
-results[0].plot()
-# results[0].get_acoustic_parameters("source_1", "receiver_1").plot()
-
-#%% Save wav
-results[0].get_mono_ir("source_1", "receiver_1").write_to_wav(path_to_file="room_2.wav", normalize=False)
+# results[0].plot()results[0].get_acoustic_parameters("source_1", "receiver_1").plot()
