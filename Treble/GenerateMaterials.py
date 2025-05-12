@@ -1,25 +1,25 @@
-from treble_tsdk.tsdk import TSDK
 from treble_tsdk import display_data as dd
-from treble_tsdk import treble
 import numpy as np
+from treble_tsdk.tsdk import TSDK, TSDKCredentials
+from treble_tsdk import treble
 import matplotlib.pyplot as plt
 
-tsdk = TSDK()
+# tsdk = TSDK(TSDKCredentials.sso(...)) include your credentials here
 
 #%% Update absorption coefficients
 # full-octave band definitions
 f_axis_oct = np.asarray([63, 125, 250, 500, 1000, 2000, 4000, 8000])
 
 # Absorption coefficients (surface_index (floor, ceiling, front wall, other walls), octave_band)
-absorption_coefficients = np.asarray([[	0.39552,	0.7004,	2.168,	2.1516,	2.148,	1.8036,	1.573,	0.715	],
+absorption_coefficients = np.asarray([[	0.39552,	1.236,	2.168,	2.1516,	2.148,	1.8036,	1.9448,	0.715	],
 
-[	0.1728,	0.306,	0.48,	0.33,	0.27,	0.216,	0.1925,	0.0875	],
+[	0.1728,	0.54,	0.48,	0.33,	0.27,	0.216,	0.238,	0.0875	],
 
-[	0.270048,	0.47821,	1.822,	1.31505,	1.2156,	1.26576,	0.69025,	0.31375	],
+[	0.270048,	0.8439,	1.822,	1.31505,	1.2156,	1.26576,	0.8534,	0.31375	],
 
-[	0.0192,	0.034,	0.08,	0.099,	0.09,	0.108,	0.1375,	0.0625	]
+[	0.0192,	0.06,	0.08,	0.099,	0.09,	0.108,	0.17,	0.0625	]
 
-								])
+									])
 
 scattering_coefficients = [0.5, 0.15, 0.4, 0.3]
 
