@@ -1,4 +1,4 @@
-% Loads the 3rd order AAES IRs, applies an equal-power fade out, convolves
+% Loads the 4th order AAES IRs, applies an equal-power fade out, convolves
 % with programme items and saves the result to be used as listening test
 % stimuli.
 
@@ -80,9 +80,9 @@ for row = 1:size(conditions, 1)
         end
 
         % Compute convolution
-        stimulus = zeros(length(programme_item) + length(ir) - 1, 16);
+        stimulus = zeros(length(programme_item) + length(ir) - 1, 25);
 
-        for spherical_harmonic = 1:16
+        for spherical_harmonic = 1:25
             stimulus(:,spherical_harmonic) = conv(programme_item, ir(:,spherical_harmonic));
         end
 
