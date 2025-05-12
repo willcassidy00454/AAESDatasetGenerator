@@ -1,6 +1,6 @@
 
-num_room_dims = 3;
-num_absorptions = 3;
+num_room_dims = 1;
+num_absorptions = 1;
 num_filter_modes = 3;
 rir_dir = "Audio Data/Physical RIRs/";
 reverberator_base_dir = "Audio Data/Reverberators/";
@@ -39,6 +39,7 @@ parfor row = 1:size(conditions, 1)
     passive_rt = FindT30(ir, fs);
 
     folder_name = "Reverberator Room "+room_dims_index+" Absorption "+absorption_index+" RT "+rt_ratio_index+" Filter "+filter_mode_index+"/";
+    mkdir(reverberator_base_dir + folder_name);
     disp("Generating Folder: " + folder_name);
     GenerateReverberator(passive_rt, ...
         filter_mode_index, ...
