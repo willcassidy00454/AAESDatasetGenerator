@@ -14,8 +14,8 @@ num_ls = 16;
 
 % Parameters to combine
 num_loop_gains = length(loop_gains);
-num_rooms = 1;%3;
-num_absorptions = 1;%3;
+num_rooms = 3;
+num_absorptions = 3;
 num_rt_ratios = 3;
 num_filters = 3;
 num_routings = 4;
@@ -56,7 +56,12 @@ parfor row = 1:size(conditions, 1)
     loop_gain_index = conditions(row, 5);
     routing_index = conditions(row, 6);
 
-    routing = readmatrix(routings_base_dir + "routing_" + routing_index + "_room_" + room_index + ".dat");
+    if routing_index == 4 % For routing 4, randomly fill one row (all mics to one LS) 
+        routing = zeros(16);
+        routing(randi(16), :) = 1;
+    else
+        routing = readmatrix(routings_base_dir + "routing_" + routing_index + "_room_" + room_index + ".dat");
+    end
 
     GenerateAAESIRs(rir_base_dir + "Room "+room_index+" Absorption "+absorption_index+"/", ...
         reverberator_base_dir + "Reverberator Room "+room_index+" Absorption "+absorption_index+" RT "+rt_ratio_index+" Filter "+filter_index+"/", ...
