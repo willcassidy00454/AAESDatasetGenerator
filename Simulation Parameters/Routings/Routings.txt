@@ -2,4 +2,5 @@ Routings
 1. Identity
 2. All Ones
 3. Rear Only
-4. (in-script) All Mics to One Loudspeaker (randomised)
+4. All Mics to Back-Left LS
+5. All Mics to Back-Right LS

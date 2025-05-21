@@ -70,12 +70,7 @@ parfor row = 1:size(reduced_conditions, 1)
     loop_gain_index = reduced_conditions(row, 5);
     routing_index = reduced_conditions(row, 6);
 
-    if routing_index == 4 % For routing 4, randomly fill one row (all mics to one LS) 
-        routing = zeros(16);
-        routing(randi(16), :) = 1;
-    else
-        routing = readmatrix(routings_base_dir + "routing_" + routing_index + "_room_" + room_index + ".dat");
-    end
+    routing = readmatrix(routings_base_dir + "routing_" + routing_index + "_room_" + room_index + ".dat");
 
     GenerateAAESIRs(rir_base_dir + "Room "+room_index+" Absorption "+absorption_index+"/", ...
         reverberator_base_dir + "Reverberator Room "+room_index+" Absorption "+absorption_index+" RT "+rt_ratio_index+" Filter "+filter_index+"/", ...
