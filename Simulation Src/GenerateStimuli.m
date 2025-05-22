@@ -12,6 +12,17 @@ stimulus_duration = 12; % Pad/truncate all stimuli to this time in seconds
 
 folders = dir(fullfile(aaes_rir_dir,"*","ReceiverRIR.wav"));
 
+loudness_target_dB_LUFS = -34;
+
+maxOrder = 4;
+channel_weights = [];
+
+% Calculate channel weights for loudness estimation
+for n = 0:maxOrder
+    wn = sqrt(1 / (2*n + 1));
+    channel_weights = [channel_weights; wn * ones(2*n + 1, 1)];
+end
+
 for file_index = 1:numel(folders)
     folder_name = extractAfter(folders(file_index).folder, asManyOfPattern(wildcardPattern + "/"));
     [ir, fs] = audioread(aaes_rir_dir + folder_name + "/" + folders(file_index).name);
@@ -50,9 +61,12 @@ for file_index = 1:numel(folders)
         end
 
         % Normalise output
-        stimulus = stimulus / max(abs(stimulus),[],"all");
+        loudness_dB_LUFS = integratedLoudness(stimulus, fs, channel_weights');
+        gain_to_apply_dB = loudness_target_dB_LUFS - loudness_dB_LUFS;
 
-        output_filename = stimulus_output_dir + folder_name + " Prog Item " + programme_item_index + ".wav";
+        stimulus = stimulus * power(10.0, gain_to_apply_dB / 20.0);
+
+        output_filename = stimulus_output_dir + " Prog Item " + programme_item_index + " " + folder_name + ".wav";
         audiowrite(output_filename, stimulus, fs, "BitsPerSample", output_bit_depth);
     end
 end
