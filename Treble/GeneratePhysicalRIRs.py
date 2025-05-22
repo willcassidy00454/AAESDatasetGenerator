@@ -27,14 +27,14 @@ def findMaxInResults():
         microphone = microphones[room_index][mic_index]
         for source_index in range(num_sources):
             source = sources[room_index][source_index]
-            ir = results[room_index].get_mono_ir(source=source.label, receiver=microphone.label)
+            ir = results[room_index][absorption_index].get_mono_ir(source=source.label, receiver=microphone.label)
             ir = convolveWithMicIR(ir, "Omni") # Convolve with a mic IR to ensure any conv gain is compensated for
             if np.max(ir.data) > overall_max:
                 overall_max = np.max(ir.data)
 
         for ls_index in range(num_ls):
             loudspeaker = loudspeakers[room_index][ls_index]
-            ir = results[room_index].get_mono_ir(source=loudspeaker.label, receiver=microphone.label)
+            ir = results[room_index][absorption_index].get_mono_ir(source=loudspeaker.label, receiver=microphone.label)
             ir = convolveWithMicIR(ir, "Omni") # Convolve with a mic IR to ensure any conv gain is compensated for
             if np.max(ir.data) > overall_max:
                 overall_max = np.max(ir.data)
@@ -44,13 +44,13 @@ def findMaxInResults():
 
         for source_index in range(num_sources):
             source = sources[room_index][source_index]
-            ir = results[room_index].get_mono_ir(source=source.label, receiver=receiver.label)
+            ir = results[room_index][absorption_index].get_mono_ir(source=source.label, receiver=receiver.label)
             if np.max(ir.data) > overall_max:
                 overall_max = np.max(ir.data)
 
         for ls_index in range(num_ls):
             loudspeaker = loudspeakers[room_index][ls_index]
-            ir = results[room_index].get_mono_ir(source=loudspeaker.label, receiver=receiver.label)
+            ir = results[room_index][absorption_index].get_mono_ir(source=loudspeaker.label, receiver=receiver.label)
             if np.max(ir.data) > overall_max:
                 overall_max = np.max(ir.data)
 
@@ -120,8 +120,8 @@ def convertToMinimumPhase(ir):
     return min_phase_ir
 
 #%% Load room dims and make material assignments
-num_rooms = 1
-num_absorptions = 1
+num_rooms = 3
+num_absorptions = 2
 
 # Indices: (room_index, dimension (x/y/z))
 room_dimensions = np.empty((num_rooms, 3))
@@ -292,10 +292,11 @@ sim_defs[0].remove_invalid_sources()
 #%% Full Simulation: create simulation definitions for all room conditions
 sim_defs = []
 
+estimated_t60s = [1.1, 1.1, 1.8]
+estimated_volumes = [817.0, 5040.0, 9030.0]
+
 for room_index in range(num_rooms):
     for absorption_index in range(num_absorptions):
-        estimated_t60s = [1.1, 1.1, 1.8]
-        estimated_volumes = [817.0, 5040.0, 9030.0]
         schroeder_frequency = 2000.0 * np.sqrt(estimated_t60s[room_index] / estimated_volumes[room_index])
         crossover_frequency = int(4.0 * schroeder_frequency)
 
@@ -304,7 +305,7 @@ for room_index in range(num_rooms):
                 simulation_type=treble.SimulationType.hybrid, # the type of simulation
                 crossover_frequency=crossover_frequency,
                 model=models[room_index], # the model we created in an earlier step
-                energy_decay_threshold=40, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
+                energy_decay_threshold=60, # simulation termination criteria - the simulation stops running after -60 dB of energy decay
                 receiver_list=receivers[room_index] + microphones[room_index],
                 source_list=sources[room_index] + loudspeakers[room_index],
                 material_assignment=material_assignments[absorption_index]))
@@ -314,7 +315,7 @@ for room_index in range(num_rooms):
     sim_defs[room_index].remove_invalid_sources()
 
 #%% Plot simulation
-sim_defs[0].plot()
+sim_defs[5].plot()
 
 #%% Display simulations
 dd.display(project.get_simulations())
@@ -336,25 +337,39 @@ for sim_index in range(len(sim_defs)):
 
 #%% Run simulations
 for simulation in simulations:
+    simulation.set_gpu_count(1)
     simulation.start()
 
 # This will log a message when simulations complete
 # project.as_live_progress()
 
 #%% Check progress
-dd.display(simulations[0].get_tasks())
+dd.display(simulations[2].get_tasks())
 
-#%% Download/load simulation results
-results = []
+#%% If a simulation has an error: cancel, delete, re-add and restart the simulation
+simulation_index_to_restart = 2
 
-for simulation in simulations:
-    results.append(simulation.download_results(f"Treble/Results/{simulation.name}"))
-    # results.append(simulation.get_results_object(f"Treble/Results/{simulation.name}"))
+simulations[simulation_index_to_restart].cancel()
+simulations[simulation_index_to_restart].delete()
+simulations[simulation_index_to_restart] = project.add_simulation(sim_defs[simulation_index_to_restart])
+simulations[simulation_index_to_restart].set_gpu_count(1)
+simulations[simulation_index_to_restart].start()
+
+#%% Download/load simulation results (indices: (room_index, absorption_index))
+results = [[] for i in range(num_rooms)]
+
+simulation_index = 0
+
+for room_index in range(num_rooms):
+    for absorption_index in range(num_absorptions):
+        simulation = simulations[simulation_index]
+        results[room_index].append(simulation.download_results(f"Treble/Results/{simulation.name}"))
+        # results[room_index].append(simulation.get_results_object(f"Treble/Results/{simulation.name}"))
+        simulation_index += 1
 
 #%% Full Simulation: extract mono IRs from the first-order ambisonics microphone IRs, applying the rotations and polar
 # patterns. Then, convolve the microphones with omni/cardioid IRs (just with the on-axis IRs for the time being).
 # Save these into a folder with labels "G" (source to mics) and "H" (ls to mics) in the format "G_R1_S1".
-
 for room_index in range(num_rooms):
     for absorption_index in range(num_absorptions):
         # Find max value of all results
@@ -369,11 +384,11 @@ for room_index in range(num_rooms):
                 source = sources[room_index][source_index]
 
                 if mic_directivities[room_index][mic_index] == "CARDIOID":
-                    spatial_ir = results[room_index].get_spatial_ir(source=source.label, receiver=microphone.label)
+                    spatial_ir = results[room_index][absorption_index].get_spatial_ir(source=source.label, receiver=microphone.label)
                     ir = getCardioidFrom1stOrder(spatial_ir, mic_rotations[room_index][mic_index])
                     ir = convolveWithMicIR(ir, "Cardioid")
                 else:
-                    ir = results[room_index].get_mono_ir(source=source.label, receiver=microphone.label)
+                    ir = results[room_index][absorption_index].get_mono_ir(source=source.label, receiver=microphone.label)
                     ir = convolveWithMicIR(ir, "Omni")
 
                 ir.data /= overall_max
@@ -384,11 +399,11 @@ for room_index in range(num_rooms):
                 loudspeaker = loudspeakers[room_index][ls_index]
 
                 if mic_directivities[room_index][mic_index] == "CARDIOID":
-                    spatial_ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label)
+                    spatial_ir = results[room_index][absorption_index].get_spatial_ir(source=loudspeaker.label, receiver=microphone.label)
                     ir = getCardioidFrom1stOrder(spatial_ir, mic_rotations[room_index][mic_index])
                     ir = convolveWithMicIR(ir, "Cardioid")
                 else:
-                    ir = results[room_index].get_mono_ir(source=loudspeaker.label, receiver=microphone.label)
+                    ir = results[room_index][absorption_index].get_mono_ir(source=loudspeaker.label, receiver=microphone.label)
                     ir = convolveWithMicIR(ir, "Omni")
 
                 ir.data /= overall_max
@@ -400,16 +415,16 @@ for room_index in range(num_rooms):
             # "E" src to rec:
             for source_index in range(num_sources):
                 source = sources[room_index][source_index]
-                ir = results[room_index].get_spatial_ir(source=source.label, receiver=receiver.label)
+                ir = results[room_index][absorption_index].get_spatial_ir(source=source.label, receiver=receiver.label)
                 ir.data /= overall_max
                 ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/E_R{receiver_index + 1}_S{source_index + 1}.wav", normalize=False)
 
             # "F" ls to rec:
             for ls_index in range(num_ls):
                 loudspeaker = loudspeakers[room_index][ls_index]
-                ir = results[room_index].get_spatial_ir(source=loudspeaker.label, receiver=receiver.label)
+                ir = results[room_index][absorption_index].get_spatial_ir(source=loudspeaker.label, receiver=receiver.label)
                 ir.data /= overall_max
                 ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/F_R{receiver_index + 1}_S{ls_index + 1}.wav", normalize=False)
 
 #%% Plot results/acoustic params
-# results[0].plot()results[0].get_acoustic_parameters("source_1", "receiver_1").plot()
+# results[0].plot()results[0][0].get_acoustic_parameters("source_1", "receiver_1").plot()
