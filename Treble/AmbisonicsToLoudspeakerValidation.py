@@ -19,8 +19,8 @@ project = tsdk.get_by_name("AmbiToLSValidation")
 
 #%% Create a shoebox room
 room = treble.GeometryDefinitionGenerator.create_shoebox_room(
-    width_x=3,
-    depth_y=6,
+    width_x=6,
+    depth_y=3,
     height_z=2,
     join_wall_layers=True,
 )
@@ -76,7 +76,7 @@ for layer in model.layer_names:
 dd.display(material_assignment)
 
 #%% Define source and receiver points (three rings (0.5 m radius) of omni sources around a spatial receiver)
-centre_point = treble.Point3d(x=1.5, y=3, z=1.0)
+centre_point = treble.Point3d(x=3, y=1.5, z=1.0)
 
 # Receiver points along the left of the stage by default (along positive x-axis)
 # This requires a -90 degree yaw correction using SPARTA, or a +90 degree yaw correction using IEM
@@ -88,39 +88,40 @@ receiver = [treble.Receiver.make_spatial(
 
 source_angles_degrees = [x for x in range(0,360,45)]
 radius_metres = 0.5
-source_x_deltas = radius_metres * np.sin(np.deg2rad(source_angles_degrees))
-source_y_deltas = radius_metres * np.cos(np.deg2rad(source_angles_degrees))
+source_x_deltas = radius_metres * np.cos(np.deg2rad(source_angles_degrees))
+source_y_deltas = radius_metres * np.sin(np.deg2rad(source_angles_degrees))
 
 sources = []
 
 # Circle in horizontal plane, fixed Z
 for source_index in range(len(source_x_deltas)):
     sources.append(treble.Source.make_omni(position=treble.Point3d(centre_point.x - source_x_deltas[source_index],
-                                                                   centre_point.y - source_y_deltas[source_index],
+                                                                   centre_point.y + source_y_deltas[source_index],
                                                                    centre_point.z),
                                            label=f"source_{source_index + 1}"))
 # Circle in median plane, fixed X
 for source_index in range(len(source_x_deltas)):
     sources.append(treble.Source.make_omni(position=treble.Point3d(centre_point.x,
-                                                                   centre_point.y - source_y_deltas[source_index],
-                                                                   centre_point.z + source_x_deltas[source_index]),
+                                                                   centre_point.y - source_x_deltas[source_index],
+                                                                   centre_point.z + source_y_deltas[source_index]),
                                            label=f"source_{source_index + 9}"))
-# # Circle in interaural plane, fixed Y
+# Circle in interaural plane, fixed Y
 for source_index in range(len(source_x_deltas)):
-    sources.append(treble.Source.make_omni(position=treble.Point3d(centre_point.x + source_y_deltas[source_index],
+    sources.append(treble.Source.make_omni(position=treble.Point3d(centre_point.x - source_x_deltas[source_index],
                                                                    centre_point.y,
-                                                                   centre_point.z + source_x_deltas[source_index]),
+                                                                   centre_point.z + source_y_deltas[source_index]),
                                            label=f"source_{source_index + 17}"))
 
 #%% Make simulation definition
 sim_def = treble.SimulationDefinition(
         name="AmbiToLSValidation", # unique name of the simulation
-        simulation_type=treble.SimulationType.ga, # the type of simulation
+        simulation_type=treble.SimulationType.hybrid, # the type of simulation
         model=model, # the model we created in an earlier step
         energy_decay_threshold=30, # simulation termination criteria - the simulation stops running after -40 dB of energy decay
         receiver_list=receiver,
         source_list=sources,
-        material_assignment=material_assignment
+        material_assignment=material_assignment,
+        crossover_frequency=200
 )
 
 # Plot the simulation
@@ -137,16 +138,20 @@ simulation.start()
 #%% Check progress
 dd.display(simulation.get_tasks())
 
+#%% Show all simulations
+dd.display(project.get_simulations())
+
 #%% Download results and save to .wavs
 results = simulation.download_results(f'Treble/Validation Results/{simulation.name}')
+# results = simulation.get_results_object(f'Treble/Validation Results/{simulation.name}')
 
 for source_index in range(8):
     ir = results.get_spatial_ir(source=sources[source_index].label, receiver=receiver[0].label)
     ir.write_to_wav(
-        path_to_file=f"Audio Data/Validation Results/Validation RIRs/horizontal_{source_index + 1}.wav")
+        path_to_file=f"Audio Data/Validation RIRs/horizontal_{source_index + 1}.wav")
     ir = results.get_spatial_ir(source=sources[source_index + 8].label, receiver=receiver[0].label)
     ir.write_to_wav(
-        path_to_file=f"Audio Data/Validation Results/Validation RIRs/median_{source_index + 1}.wav")
+        path_to_file=f"Audio Data/Validation RIRs/median_{source_index + 1}.wav")
     ir = results.get_spatial_ir(source=sources[source_index + 16].label, receiver=receiver[0].label)
     ir.write_to_wav(
-        path_to_file=f"Audio Data/Validation Results/Validation RIRs/interaural_{source_index + 1}.wav")
+        path_to_file=f"Audio Data/Validation RIRs/interaural_{source_index + 1}.wav")
