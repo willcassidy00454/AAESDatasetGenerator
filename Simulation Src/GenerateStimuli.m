@@ -14,13 +14,13 @@ folders = dir(fullfile(aaes_rir_dir,"*","ReceiverRIR.wav"));
 
 loudness_target_dB_LUFS = -34;
 
-maxOrder = 4;
+max_order = 4;
 channel_weights = [];
 
 % Calculate channel weights for loudness estimation
-for n = 0:maxOrder
-    wn = sqrt(1 / (2*n + 1));
-    channel_weights = [channel_weights; wn * ones(2*n + 1, 1)];
+for n = 0:max_order
+    weight = sqrt(1 / (2*n + 1));
+    channel_weights = [channel_weights; weight * ones(2*n + 1, 1)];
 end
 
 for file_index = 1:numel(folders)
@@ -35,6 +35,13 @@ for file_index = 1:numel(folders)
 
     for programme_item_index = 1:num_programme_items
         disp("Generating " + folder_name + " Programme Item " + programme_item_index);
+
+        output_filename = stimulus_output_dir + "Prog Item " + programme_item_index + " " + folder_name + ".wav";
+
+        if isfile(output_filename)
+            disp("File already exists; skipping...")
+            continue
+        end
 
         [programme_item, fs_programme_item] = audioread(programme_items_dir + "programme_item_" + programme_item_index + ".wav");
 
@@ -66,7 +73,6 @@ for file_index = 1:numel(folders)
 
         stimulus = stimulus * power(10.0, gain_to_apply_dB / 20.0);
 
-        output_filename = stimulus_output_dir + " Prog Item " + programme_item_index + " " + folder_name + ".wav";
         audiowrite(output_filename, stimulus, fs, "BitsPerSample", output_bit_depth);
     end
 end
