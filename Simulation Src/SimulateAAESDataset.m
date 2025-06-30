@@ -16,7 +16,7 @@ num_ls = 16;
 all_conditions = readmatrix(stimulus_list_dir);
 
 % Simulate each row in the conditions matrix
-for row = 1:size(all_conditions, 1)
+parfor row = 1:size(all_conditions, 1)
     room_index = all_conditions(row, 1);
     absorption_index = all_conditions(row, 2);
     rt_ratio_index = all_conditions(row, 3);
