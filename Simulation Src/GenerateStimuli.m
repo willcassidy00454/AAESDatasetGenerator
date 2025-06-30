@@ -14,15 +14,6 @@ folders = dir(fullfile(aaes_rir_dir,"*","ReceiverRIR.wav"));
 
 loudness_target_dB_LUFS = -34;
 
-max_order = 4;
-channel_weights = [];
-
-% Calculate channel weights for loudness estimation
-for n = 0:max_order
-    weight = sqrt(1 / (2*n + 1));
-    channel_weights = [channel_weights; weight * ones(2*n + 1, 1)];
-end
-
 for file_index = 1:numel(folders)
     folder_name = extractAfter(folders(file_index).folder, asManyOfPattern(wildcardPattern + "/"));
     [ir, fs] = audioread(aaes_rir_dir + folder_name + "/" + folders(file_index).name);
@@ -55,20 +46,20 @@ for file_index = 1:numel(folders)
         stimulus = zeros(length(programme_item) + length(ir) - 1, 25);
 
         for spherical_harmonic = 1:25
-            stimulus(:,spherical_harmonic) = conv(programme_item, ir(:,spherical_harmonic));
+            stimulus(:, spherical_harmonic) = conv(programme_item, ir(:, spherical_harmonic));
         end
 
         desired_stimulus_length_samples = fs * stimulus_duration;
 
         % Pad/truncate stimulus to desired length
         if length(stimulus) < desired_stimulus_length_samples
-            stimulus(end:desired_stimulus_length_samples,:) = 0.0;
+            stimulus(end:desired_stimulus_length_samples, :) = 0.0;
         else
             stimulus = stimulus(1:desired_stimulus_length_samples, :);
         end
 
-        % Normalise output
-        loudness_dB_LUFS = integratedLoudness(stimulus, fs, channel_weights');
+        % Normalise output based on the omnidirectional channel
+        loudness_dB_LUFS = integratedLoudness(stimulus(:, 1), fs);
         gain_to_apply_dB = loudness_target_dB_LUFS - loudness_dB_LUFS;
 
         stimulus = stimulus * power(10.0, gain_to_apply_dB / 20.0);
