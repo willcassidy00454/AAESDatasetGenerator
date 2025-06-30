@@ -119,9 +119,10 @@ def convertToMinimumPhase(ir):
 
     return min_phase_ir
 
+
 #%% Load room dims and make material assignments
 num_rooms = 3
-num_absorptions = 2
+num_absorptions = 3
 
 # Indices: (room_index, dimension (x/y/z))
 room_dimensions = np.empty((num_rooms, 3))
@@ -137,8 +138,7 @@ corresponding_surfaces = ["non_frontal_wall", "non_frontal_wall", "non_frontal_w
 for absorption_index in range(num_absorptions):
     for layer_index in range(len(layer_names)):
         layer_name = layer_names[layer_index]
-        # get_by_name doesn't seem to work... search does though, but we need one element so take the first
-        material = tsdk.material_library.get_by_name(f"room_{absorption_index + 1}_{corresponding_surfaces[layer_index]}")
+        material = tsdk.material_library.get_by_name(f"absorption_{absorption_index + 1}_{corresponding_surfaces[layer_index]}")
         material_assignments[absorption_index].append(treble.MaterialAssignment(layer_name, material))
 
 #%% Load transducer coords, transducer directivities, and transducer rotations
@@ -259,7 +259,7 @@ for room_index in range(num_rooms):
     models.append(project.get_model_by_name(f"room_{room_index + 1}"))
 
 #%% RT Validation: create simulation definition for validating the reverberation times of each room
-room_index_to_validate = 2 # Starts at 0, uses corresponding absorption set
+room_index_to_validate = 1 # Starts at 0, uses corresponding absorption set
 
 estimated_t60s = [1.1, 1.1, 1.8]
 estimated_volumes = [817.0, 5040.0, 9030.0]
@@ -315,7 +315,7 @@ for room_index in range(num_rooms):
     sim_defs[room_index].remove_invalid_sources()
 
 #%% Plot simulation
-sim_defs[5].plot()
+sim_defs[0].plot()
 
 #%% Display simulations
 dd.display(project.get_simulations())
@@ -340,11 +340,11 @@ for simulation in simulations:
     simulation.set_gpu_count(1)
     simulation.start()
 
-# This will log a message when simulations complete
-# project.as_live_progress()
+# Log a message when simulations complete
+project.as_live_progress()
 
 #%% Check progress
-dd.display(simulations[2].get_tasks())
+dd.display(simulations[0].get_tasks())
 
 #%% If a simulation has an error: cancel, delete, re-add and restart the simulation
 simulation_index_to_restart = 2
@@ -355,7 +355,7 @@ simulations[simulation_index_to_restart] = project.add_simulation(sim_defs[simul
 simulations[simulation_index_to_restart].set_gpu_count(1)
 simulations[simulation_index_to_restart].start()
 
-#%% Download/load simulation results (indices: (room_index, absorption_index))
+#%% Full Simulation: Download/load simulation results (indices: (room_index, absorption_index))
 results = [[] for i in range(num_rooms)]
 
 simulation_index = 0
@@ -363,9 +363,15 @@ simulation_index = 0
 for room_index in range(num_rooms):
     for absorption_index in range(num_absorptions):
         simulation = simulations[simulation_index]
-        results[room_index].append(simulation.download_results(f"Treble/Results/{simulation.name}"))
-        # results[room_index].append(simulation.get_results_object(f"Treble/Results/{simulation.name}"))
+        results[room_index].append(simulation.download_results(f"Treble/Results/{simulation.name}"))  # Download results from cloud
+        # results[room_index].append(simulation.get_results_object(f"Treble/Results/{simulation.name}"))  # Load results from file (previously downloaded)
         simulation_index += 1
+
+#%% RT Validation: Download simulation results
+results = [[] for i in range(len(simulations))]
+
+for simulation_index, simulation in enumerate(simulations):
+    results[simulation_index].append(simulation.download_results(f"Treble/Results/{simulation.name}"))
 
 #%% Full Simulation: extract mono IRs from the first-order ambisonics microphone IRs, applying the rotations and polar
 # patterns. Then, convolve the microphones with omni/cardioid IRs (just with the on-axis IRs for the time being).
@@ -427,4 +433,9 @@ for room_index in range(num_rooms):
                 ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Room {room_index + 1} Absorption {absorption_index + 1}/F_R{receiver_index + 1}_S{ls_index + 1}.wav", normalize=False)
 
 #%% Plot results/acoustic params
-# results[0].plot()results[0][0].get_acoustic_parameters("source_1", "receiver_1").plot()
+# results[0].plot()
+results[0][0].get_acoustic_parameters("source_1", "receiver_1").plot()
+
+#%% RT Validation: Save IRs
+ir = results[0][0].get_mono_ir("source_1", "receiver_1")
+ir.write_to_wav(path_to_file=f"Audio Data/Physical RIRs/Validation/{simulations[0].name}.wav", normalize=True)

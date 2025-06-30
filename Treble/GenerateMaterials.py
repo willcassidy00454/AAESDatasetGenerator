@@ -11,13 +11,13 @@ import matplotlib.pyplot as plt
 f_axis_oct = np.asarray([63, 125, 250, 500, 1000, 2000, 4000, 8000])
 
 # Absorption coefficients (surface_index (floor, ceiling, front wall, other walls), octave_band)
-absorption_coefficients = np.asarray([[	0.39552,	1.236,	2.168,	2.1516,	2.148,	1.8036,	1.9448,	0.715	],
+absorption_coefficients = np.asarray([[	0.285,	0.2475,	0.375,	0.3,	0.3,	0.33,	0.33,	0.3	],
 
-[	0.1728,	0.54,	0.48,	0.33,	0.27,	0.216,	0.238,	0.0875	],
+[	0.285,	0.2475,	0.375,	0.3,	0.3,	0.33,	0.33,	0.3	],
 
-[	0.270048,	0.8439,	1.822,	1.31505,	1.2156,	1.26576,	0.8534,	0.31375	],
+[	0.285,	0.2475,	0.375,	0.3,	0.3,	0.33,	0.33,	0.3	],
 
-[	0.0192,	0.06,	0.08,	0.099,	0.09,	0.108,	0.17,	0.0625	]
+[	0.285,	0.2475,	0.375,	0.3,	0.3,	0.33,	0.33,	0.3	]
 
 									])
 
@@ -27,13 +27,13 @@ scattering_coefficients = [0.5, 0.15, 0.4, 0.3]
 absorption_coefficients = absorption_coefficients.clip(0.01, 0.95)
 
 #%% Create and fit all surface materials
-room_index = 2 # Starts at 0
+absorption_index = 1 # Starts at 0
 
 fitted_materials = []
-material_names = [f"room_{room_index + 1}_floor",
-                  f"room_{room_index + 1}_ceiling",
-                  f"room_{room_index + 1}_front_wall",
-                  f"room_{room_index + 1}_non_frontal_wall"]
+material_names = [f"absorption_{absorption_index + 1}_floor",
+                  f"absorption_{absorption_index + 1}_ceiling",
+                  f"absorption_{absorption_index + 1}_front_wall",
+                  f"absorption_{absorption_index + 1}_non_frontal_wall"]
 
 for mat_index in range(4):
     # Create the material definition object
@@ -50,7 +50,7 @@ for mat_index in range(4):
     fitted_materials.append(tsdk.material_library.perform_material_fitting(material_definition))
 
 #%% Visualise the fitting results
-mat_index_to_plot = 3
+mat_index_to_plot = 0
 
 # Retrieve the absorption coefficients from the fitted material
 fitted_material_coeffs = fitted_materials[mat_index_to_plot].absorption_coefficients
