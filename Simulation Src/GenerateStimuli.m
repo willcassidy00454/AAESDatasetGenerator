@@ -8,7 +8,7 @@ stimulus_output_dir = "Audio Data/Stimuli/";
 fade_length_ms = 50;
 output_bit_depth = 16;
 num_programme_items = 2;
-stimulus_duration = 10; % Pad/truncate all stimuli to this time in seconds
+stimulus_duration = 11; % Pad/truncate all stimuli to this time in seconds
 
 folders = dir(fullfile(aaes_rir_dir,"*","ReceiverRIR.wav"));
 
