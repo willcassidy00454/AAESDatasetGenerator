@@ -14,7 +14,8 @@ folders = dir(fullfile(aaes_rir_dir,"*","ReceiverRIR.wav"));
 
 loudness_target_dB_LUFS = -34;
 
-[~, fs] = audioread(aaes_rir_dir + folders(1).name + "/ReceiverRIR.wav");
+folder_name = extractAfter(folders(1).folder, asManyOfPattern(wildcardPattern + "/"));
+[~, fs] = audioread(aaes_rir_dir + folder_name + "/" + folders(1).name);
 
 for programme_item_index = 1:num_programme_items
     [programme_item, fs_programme_item] = audioread(programme_items_dir + "programme_item_" + programme_item_index + ".wav");
